@@ -1,0 +1,16 @@
+{
+  "promptFile": "records/minimax-prompt.md",
+  "requestFile": "records/minimax-request.json",
+  "provider": "MiniMax",
+  "exitCode": 0,
+  "model": "MiniMax-M3",
+  "command": "mmx text chat --messages-file records/minimax-request.json --model MiniMax-M3 --max-tokens 4096 --temperature 0.2 --non-interactive --quiet --output text",
+  "responseSha256": "C3900830C7C47F64C961E1A7CF69B3DD2D5BF6F1A9B690B4054172ED44156046",
+  "timestamp": "2026-10-27T23:30:59.7642869+08:00",
+  "codeAfterSha256": "B66B54F79E43786984C7DEC388930E0E1B959B15A2CBBED925566D464AA3C754",
+  "promptSha256": "2063A8FAEEF53736E4017FD8B4210F03694E349262C8595849B562B3935043A8",
+  "sdk": "mmx-cli",
+  "appliedTo": "business/ticket-service.js",
+  "responseFile": "records/minimax-response.md",
+  "cliVersion": "1.0.28"
+}

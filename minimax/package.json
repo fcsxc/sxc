@@ -1,0 +1,23 @@
+{
+  "name": "sdd-context-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MiniMax SDD engineering context demo",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "context:index": "node scripts/index-context.mjs",
+    "context:query": "node scripts/query-context.mjs",
+    "state:save": "node scripts/save-task-state.mjs",
+    "state:load": "node scripts/load-task-state.mjs",
+    "state:create": "node scripts/create-scope.mjs",
+    "spec:use": "node scripts/use-spec-version.mjs"
+  },
+  "dependencies": {
+    "@oceanbase/seekdb-node": "1.4.0",
+    "mysql2": "3.24.6"
+  }
+}

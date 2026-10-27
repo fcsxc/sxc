@@ -1,0 +1,9 @@
+{
+  "codeSha256": "E3F1CE5169906B7361FB4363CD2AB282004957B1166A2A4215315EEDD59A16F8",
+  "codeFile": "evidence/ticket-service.before.js",
+  "command": "node --test tests/ticket-service.test.js",
+  "output": "evidence/tests-before.txt",
+  "exitCode": 1,
+  "result": "3 passed, 2 failed; target text-filter tests failed for expected functional reason",
+  "codeVersion": "before"
+}

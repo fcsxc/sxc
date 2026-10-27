@@ -1,0 +1,26 @@
+{
+  "version": "v2",
+  "documents": [
+    {
+      "id": "spec-ticket-filter-v2",
+      "kind": "spec",
+      "path": "specs/ticket-filter.md",
+      "symbol": "filterTickets",
+      "version": "v2"
+    },
+    {
+      "id": "code-ticket-service-v2",
+      "kind": "code",
+      "path": "business/ticket-service.js",
+      "symbol": "filterTickets",
+      "version": "v2"
+    },
+    {
+      "id": "test-ticket-service-v1",
+      "kind": "test",
+      "path": "tests/ticket-service.test.js",
+      "symbol": "filterTickets",
+      "version": "v1"
+    }
+  ]
+}

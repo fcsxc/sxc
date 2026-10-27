@@ -1,0 +1,58 @@
+{
+  "ok": true,
+  "task": "为 filterTickets 增加 text 关键词过滤，需保持 status 与 minPriority 行为不变",
+  "contextVersion": "v2",
+  "database": {
+    "engine": "seekdb",
+    "path": "C:\\Users\\1\\Documents\\Codex\\2026-10-27\\skill-30-30-1-2-skill\\work\\sxc\\minimax\\seekdb-data",
+    "query": "SELECT id, kind, path, symbol, content, version FROM engineering_docs",
+    "matchedDocuments": 3
+  },
+  "sourceKinds": {
+    "spec": 1,
+    "code": 1,
+    "test": 1
+  },
+  "specs": [
+    {
+      "source": "specs/ticket-filter.md",
+      "symbol": "filterTickets",
+      "version": "v2",
+      "matchedTerms": [
+        "filtertickets",
+        "text",
+        "status",
+        "minpriority"
+      ],
+      "content": "# Support Ticket Filtering Specification\n\nVersion: v2\nStatus: current\nUpdated: 2026-10-27\n\n## Scope\n\n`filterTickets(tickets, filters)` filters a read-only list of support tickets.\n\n## Required behavior\n\n1. `filters.status` must perform an exact match when supplied.\n2. `filters.minPriority` must be inclusive when supplied.\n3. When `filters.text` is a non-empty string, matching must be case-insensitive and must test both `ticket.title` and `ticket.description`. Leading and trailing whitespace in the query must be ignored. An empty or whitespace-only query must not filter out tickets.\n4. All supplied filters must be combined with logical AND.\n5. The function must return a new array and must not mutate the input tickets.\n6. Invalid non-array input must throw `TypeError`.\n\n## Compatibility\n\nFiltering by status and minimum priority are existing public behaviors and must remain stable. The text filter is additive and must not alter results when omitted or blank.\r\n"
+    }
+  ],
+  "code": [
+    {
+      "source": "business/ticket-service.js",
+      "symbol": "filterTickets",
+      "version": "v1",
+      "matchedTerms": [
+        "filtertickets",
+        "status",
+        "minpriority"
+      ],
+      "content": "/**\n * Filter support tickets without mutating the input array.\n *\n * Existing filters:\n * - status: exact match\n * - minPriority: inclusive lower bound\n */\nexport function filterTickets(tickets, filters = {}) {\n  if (!Array.isArray(tickets)) {\n    throw new TypeError(\"tickets must be an array\");\n  }\n  return tickets.filter((ticket) => {\n    if (filters.status !== undefined && ticket.status !== filters.status) {\n      return false;\n    }\n    if (filters.minPriority !== undefined && ticket.priority < filters.minPriority) {\n      return false;\n    }\n    return true;\n  });\n}\r\n"
+    }
+  ],
+  "tests": [
+    {
+      "source": "tests/ticket-service.test.js",
+      "symbol": "filterTickets",
+      "version": "v1",
+      "matchedTerms": [
+        "filtertickets",
+        "text",
+        "status",
+        "minpriority"
+      ],
+      "content": "import test from \"node:test\";\nimport assert from \"node:assert/strict\";\nimport { filterTickets } from \"../business/ticket-service.js\";\n\nconst tickets = [\n  { id: \"T1\", title: \"VPN login fails\", description: \"Remote access error\", status: \"open\", priority: 4 },\n  { id: \"T2\", title: \"Invoice export\", description: \"Billing download\", status: \"open\", priority: 2 },\n  { id: \"T3\", title: \"Account review\", description: \"VPN permissions need cleanup\", status: \"closed\", priority: 3 },\n  { id: \"T4\", title: \"Printer setup\", description: \"Office printer\", status: \"open\", priority: 1 },\n];\n\ntest(\"existing status filter remains compatible\", () => {\n  assert.deepEqual(filterTickets(tickets, { status: \"open\" }).map((t) => t.id), [\"T1\", \"T2\", \"T4\"]);\n});\n\ntest(\"existing minPriority filter remains inclusive\", () => {\n  assert.deepEqual(filterTickets(tickets, { minPriority: 3 }).map((t) => t.id), [\"T1\", \"T3\"]);\n});\n\ntest(\"target: text matches title and description case-insensitively\", () => {\n  assert.deepEqual(filterTickets(tickets, { text: \"  vpn  \" }).map((t) => t.id), [\"T1\", \"T3\"]);\n});\n\ntest(\"target: blank text does not filter out tickets\", () => {\n  assert.deepEqual(filterTickets(tickets, { text: \"   \" }).map((t) => t.id), [\"T1\", \"T2\", \"T3\", \"T4\"]);\n});\n\ntest(\"all existing filters can be combined with text\", () => {\n  assert.deepEqual(\n    filterTickets(tickets, { status: \"open\", minPriority: 2, text: \"vpn\" }).map((t) => t.id),\n    [\"T1\"],\n  );\n});\r\n"
+    }
+  ],
+  "taskState": null
+}

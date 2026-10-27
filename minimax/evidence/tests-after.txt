@@ -1,0 +1,13 @@
+✔ existing status filter remains compatible (0.9562ms)
+✔ existing minPriority filter remains inclusive (0.1129ms)
+✔ target: text matches title and description case-insensitively (0.0996ms)
+✔ target: blank text does not filter out tickets (0.6886ms)
+✔ all existing filters can be combined with text (0.1328ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 112.8633

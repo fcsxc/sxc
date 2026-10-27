@@ -1,0 +1,8 @@
+node_modules/
+seekdb-data/
+.env
+.venv/
+.tools/
+*.log
+__pycache__/
+seekdb-smoke.mjs

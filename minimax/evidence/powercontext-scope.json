@@ -1,0 +1,11 @@
+{
+  "provider": "PowerContext",
+  "endpoint": "http://127.0.0.1:8000",
+  "scope_id": "scp_2x5evnv0rgdy1fn9y3mvywkmk1",
+  "title": "SDD engineering context demo",
+  "summary": "MiniMax + seekdb + PowerContext task state",
+  "parent_scope_id": null,
+  "context_references": [],
+  "external_references": [],
+  "version": 1
+}

@@ -1,0 +1,36 @@
+{
+  "seekdbPackage": "@oceanbase/seekdb-node@1.4.0",
+  "powercontextVersion": "1.4.1",
+  "minimaxModel": "MiniMax-M3",
+  "commands": [
+    {
+      "exitCode": 0,
+      "output": "evidence/seekdb-index-final.json",
+      "command": "node scripts/index-context.mjs"
+    },
+    {
+      "exitCode": 0,
+      "output": "evidence/context-final-completed.json",
+      "command": "node scripts/query-context.mjs <task>"
+    },
+    {
+      "exitCode": 1,
+      "phase": "before-change",
+      "output": "evidence/tests-before.txt",
+      "command": "node --test tests/ticket-service.test.js"
+    },
+    {
+      "exitCode": 0,
+      "output": "records/minimax-response.md",
+      "command": "mmx text chat --messages-file records/minimax-request.json --model MiniMax-M3"
+    },
+    {
+      "exitCode": 0,
+      "phase": "after-MiniMax",
+      "output": "evidence/tests-after.txt",
+      "command": "node --test tests/ticket-service.test.js"
+    }
+  ],
+  "minimaxCli": "mmx 1.0.28",
+  "node": "v24.11.1"
+}

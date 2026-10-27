@@ -1,0 +1,29 @@
+{
+  "provider": "PowerContext",
+  "endpoint": "http://127.0.0.1:8000",
+  "scope": "scp_2x5evnv0rgdy1fn9y3mvywkmk1",
+  "state": {
+    "task": "Add text filtering to filterTickets",
+    "status": "context_ready",
+    "completed": "Initial v1 spec indexed into seekdb; v2 spec reimported; relevant spec, code and tests retrieved.",
+    "pending": "Use MiniMax to modify business/ticket-service.js.",
+    "verification": "Before-change tests recorded: 3 pass, 2 fail (target cases)."
+  },
+  "saved": {
+    "changed": true,
+    "records": [
+      {
+        "artifact": {
+          "family": "atomic-memory",
+          "artifact_id": "art_9e544f61647b46f88b638bdaff6f10b1",
+          "revision": 1
+        },
+        "kind": "decision",
+        "text": "SDD_TASK_STATE\n{\n  \"task\": \"Add text filtering to filterTickets\",\n  \"status\": \"context_ready\",\n  \"completed\": \"Initial v1 spec indexed into seekdb; v2 spec reimported; relevant spec, code and tests retrieved.\",\n  \"pending\": \"Use MiniMax to modify business/ticket-service.js.\",\n  \"verification\": \"Before-change tests recorded: 3 pass, 2 fail (target cases).\"\n}",
+        "state": "active",
+        "state_version": 0,
+        "merged_into_id": null
+      }
+    ]
+  }
+}
