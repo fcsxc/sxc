@@ -35,6 +35,7 @@
 |---|---|
 | `when-night-remembers.yml` | 可直接导入 Dify 的 Chatflow DSL |
 | `scripts/powercontext_smoke_test.py` | 创建演示 Scope、写入记忆并验证召回 |
+| `powercontext.env.example` | PowerContext 环境变量模板 |
 | `evidence/powercontext-smoke-test.json` | 本次实际运行 PowerContext 1.4.1 的读写结果 |
 
 ## 运行环境
@@ -53,7 +54,8 @@ python -m venv .venv
 # Linux/macOS: source .venv/bin/activate
 pip install "powercontext[cli,server]==1.4.1"
 
-powercontext config init --template --output .env
+cp powercontext.env.example .env
+# 按需修改 .env 中的 SQLite 绝对路径
 powercontext server run --env-file .env
 ```
 
