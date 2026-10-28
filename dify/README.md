@@ -34,9 +34,11 @@
 | 文件 | 用途 |
 |---|---|
 | `when-night-remembers.yml` | 可直接导入 Dify 的 Chatflow DSL |
-| `scripts/powercontext_smoke_test.py` | 创建演示 Scope、写入记忆并验证召回 |
+| `scripts/powercontext_smoke_test.py` | 创建演示 Scope、写入记忆并验证召回；每次运行使用独立幂等键，可重复执行 |
+| `scripts/validate_dsl.py` | 校验 DSL 节点、连线、HTTP 节点、环境变量和 Python Code 节点 |
 | `powercontext.env.example` | PowerContext 环境变量模板 |
-| `evidence/powercontext-smoke-test.json` | 本次实际运行 PowerContext 1.4.1 的读写结果 |
+| `evidence/powercontext-smoke-test.json` | PowerContext 1.4.1 的实际记忆写入与召回结果 |
+| `evidence/dsl-validation.json` | Dify DSL 静态校验结果 |
 
 ## 运行环境
 
@@ -72,13 +74,19 @@ curl http://127.0.0.1:8000/health/live
 # {"status":"ok"}
 ```
 
-本目录的真实读写验证：
+先校验 DSL：
+
+```bash
+python scripts/validate_dsl.py
+```
+
+再做真实读写验证：
 
 ```bash
 python scripts/powercontext_smoke_test.py --base-url http://127.0.0.1:8000
 ```
 
-脚本会输出一个 `scope_id`，并验证“会唱歌的铜钥匙”能被下一次上下文准备召回。实际运行结果见 `evidence/powercontext-smoke-test.json`。
+脚本会输出一个 `scope_id`，并验证“会唱歌的铜钥匙”能被下一次上下文准备召回。默认使用随机幂等键，因此可在同一个 PowerContext 数据库上重复执行；实际运行结果见 `evidence/powercontext-smoke-test.json`。
 
 ## 导入 Dify
 

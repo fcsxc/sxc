@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "dsl": "when-night-remembers.yml",
+  "version": "0.1.5",
+  "mode": "advanced-chat",
+  "nodes": [
+    "start",
+    "code",
+    "http-request",
+    "llm",
+    "code",
+    "http-request",
+    "answer"
+  ],
+  "http_endpoints": [
+    "{{#env.powercontext_url#}}/v1/context/prepare",
+    "{{#env.powercontext_url#}}/v1/memory/remember"
+  ],
+  "environment_variables": [
+    "powercontext_url"
+  ],
+  "code_nodes_compiled": 2
+}

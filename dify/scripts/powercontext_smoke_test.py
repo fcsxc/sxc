@@ -6,6 +6,7 @@ import argparse
 import json
 import urllib.error
 import urllib.request
+import uuid
 from typing import Any
 
 
@@ -29,20 +30,34 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--scope-id")
-    parser.add_argument("--idempotency-key", default="when-night-remembers-demo-v1")
+    parser.add_argument("--idempotency-key")
     args = parser.parse_args()
+    idempotency_key = args.idempotency_key or f"when-night-remembers-demo-{uuid.uuid4().hex}"
 
     scope_id = args.scope_id
     if not scope_id:
-        scope = post(
-            args.base_url,
-            "/v1/scopes",
-            {
-                "title": "雾港夜话演示档案",
-                "summary": "Dify + PowerContext 的跨会话剧情记忆演示",
-                "idempotency_key": args.idempotency_key,
-            },
-        )
+        try:
+            scope = post(
+                args.base_url,
+                "/v1/scopes",
+                {
+                    "title": "雾港夜话演示档案",
+                    "summary": "Dify + PowerContext 的跨会话剧情记忆演示",
+                    "idempotency_key": idempotency_key,
+                },
+            )
+        except RuntimeError as exc:
+            if "scope_idempotency_conflict" not in str(exc):
+                raise
+            scope = post(
+                args.base_url,
+                "/v1/scopes",
+                {
+                    "title": "雾港夜话演示档案",
+                    "summary": "Dify + PowerContext 的跨会话剧情记忆演示",
+                    "idempotency_key": f"{idempotency_key}-{uuid.uuid4().hex}",
+                },
+            )
         scope_id = scope["scope_id"]
 
     remembered = post(
