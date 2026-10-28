@@ -659,7 +659,11 @@ def _page_source_id(document_id: str, document_sha256: str, page_number: int) ->
         raise ValueError("document_sha256 must be a lowercase SHA-256 digest")  # noqa: TRY003
     if not isinstance(page_number, int) or isinstance(page_number, bool) or page_number < 1:
         raise ValueError("page_number must be a positive integer")  # noqa: TRY003
-    source_id = f"pdf:{quote(document_id, safe='')}:{document_sha256}:{page_number}"
+    encoded_document = quote(document_id, safe="")
+    source_id = f"pdf:{encoded_document}:{document_sha256}:{page_number}"
+    if len(source_id) > MAX_SOURCE_ID_LENGTH:
+        encoded_document = "h:" + hashlib.sha256(document_id.encode("utf-8")).hexdigest()
+        source_id = f"pdf:{encoded_document}:{document_sha256}:{page_number}"
     if len(source_id) > MAX_SOURCE_ID_LENGTH:
         raise ValueError(f"pdf page source_id must not exceed {MAX_SOURCE_ID_LENGTH} characters")  # noqa: TRY003
     return source_id
