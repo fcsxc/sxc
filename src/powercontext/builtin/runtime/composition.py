@@ -21,6 +21,7 @@ import logging
 import os
 from collections.abc import AsyncIterator, Callable, Mapping, Sequence
 from contextlib import AsyncExitStack, asynccontextmanager, nullcontext
+from dataclasses import replace
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
@@ -705,6 +706,16 @@ def _artifact_processing_bindings(  # noqa: C901 - validate and assemble one reg
     source_registry: SourceDefinitionRegistry = BUILTIN_SOURCE_REGISTRY,
 ) -> tuple[ArtifactProcessingBinding, ...]:
     configured = list(bindings)
+    thresholds = {
+        "memory": config.runtime.memory_source_count_threshold,
+        "topic-memory": config.runtime.topic_memory_source_count_threshold,
+    }
+    configured = [
+        replace(binding, source_count_threshold=thresholds.get(binding.artifact_family))
+        if thresholds.get(binding.artifact_family) is not None
+        else binding
+        for binding in configured
+    ]
     _validate_processing_registrations(configured)
     capabilities = processing_capabilities(config)
     canonical = {**FAMILY_BINDINGS, "topic-memory": TOPIC_MEMORY_SOURCE_WINDOW_BINDING}
@@ -753,6 +764,7 @@ def _artifact_processing_bindings(  # noqa: C901 - validate and assemble one reg
         if isinstance(config.database, SQLiteConfig) and config.database.is_in_memory:
             raise BuiltinConfigurationError("topic-memory-database")
         prefix = family.replace("-", "_")
+        source_count_threshold = getattr(config.runtime, f"{prefix}_source_count_threshold", None)
         if family == "topic-memory":
             validate_topic_memory_provider_settings(config.inference)
             try:
@@ -783,9 +795,10 @@ def _artifact_processing_bindings(  # noqa: C901 - validate and assemble one reg
                 if family == "profile" and config.runtime.profile_schedule_enabled
                 else None,
                 timezone=config.runtime.profile_timezone if family == "profile" else "Asia/Shanghai",
+                source_count_threshold=source_count_threshold,
                 pending_provider=None
                 if family == "skill"
-                else SourceProcessingPendingProvider(contexts.database, binding, family),
+                else SourceProcessingPendingProvider(contexts.database, binding, family, source_count_threshold),
                 automatic_scope_filter=enabled_profile_scopes if family == "profile" else None,
             )
         )

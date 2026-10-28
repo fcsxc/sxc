@@ -99,6 +99,10 @@ class ArtifactProcessingPendingProvider(Protocol):
         """Return the next keyset position, or None when this pass is complete."""
         ...
 
+    async def request_count_reached(self, *, fence: ArtifactProcessingFence) -> bool:
+        """Accept a new window only when its count threshold is satisfied."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class ArtifactProcessingBinding:
@@ -113,12 +117,13 @@ class ArtifactProcessingBinding:
     cron: str | None = None
     timezone: str = "Asia/Shanghai"
     config_prefix: str | None = None
+    source_count_threshold: int | None = None
     pending_provider: ArtifactProcessingPendingProvider | None = None
     # Only automatic admission is filtered; already accepted requests retain
     # their own Worker authorization and domain completion semantics.
     automatic_scope_filter: Callable[[AsyncConnection, tuple[str, ...]], Awaitable[frozenset[str]]] | None = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self) -> None:  # noqa: C901 - one validation pass over immutable fields
         if not self.binding_name or self.binding_name != self.binding_name.strip():
             raise ValueError("binding_name must be nonempty and trimmed")  # noqa: TRY003
         if re.fullmatch(r"[a-z][a-z0-9-]*", self.artifact_family) is None:
@@ -138,6 +143,10 @@ class ArtifactProcessingBinding:
                 raise ValueError("interval and cron cannot both be enabled")  # noqa: TRY003
         if self.cron is not None:
             CronTrigger.from_crontab(self.cron, timezone=ZoneInfo(self.timezone))
+        if self.source_count_threshold is not None and (
+            type(self.source_count_threshold) is not int or self.source_count_threshold < 1
+        ):
+            raise ValueError("source_count_threshold must be a positive integer")  # noqa: TRY003
 
 
 class _WorkerResultSender(Protocol):
@@ -648,6 +657,12 @@ class ArtifactProcessingSupervisor:
                 state.next_discovery_at = loop.time() + _DISCOVERY_PAGE_DELAY_SECONDS
         else:
             state.reconcile_complete = True
+        if (
+            binding.source_count_threshold is not None
+            and binding.pending_provider is not None
+            and await binding.pending_provider.request_count_reached(fence=self._require_current_fence())
+        ):
+            state.discovery_pending = True
         # Alternate discovery channels so explicit traffic cannot monopolize admission.
         state.automatic_next = not state.automatic_next
         if state.automatic_next:
@@ -1095,6 +1110,8 @@ class ArtifactProcessingSupervisor:
                 deadlines.append(state.next_schedule_at)
             if state.discovery_pending or state.scan_in_progress or not state.reconcile_complete or state.degraded:
                 deadlines.append(max(now, state.next_discovery_at))
+        if any(state.binding.source_count_threshold is not None for state in self._families.values()):
+            deadlines.append(now + self._tick)
         return None if not deadlines else max(0.001, min(deadlines) - now)
 
     def _log_failure(

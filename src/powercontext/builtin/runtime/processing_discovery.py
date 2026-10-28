@@ -16,14 +16,19 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from powercontext.builtin.persistence.cursors import SourceCursorRepository
 from powercontext.builtin.persistence.database import AsyncDatabase
+from powercontext.builtin.persistence.processing import ArtifactProcessingPendingRepository
 from powercontext.builtin.persistence.processing_intents import ArtifactProcessingIntentRepository
 from powercontext.builtin.persistence.supervision import ArtifactProcessingFence, ArtifactProcessingLeaseRepository
-from powercontext.builtin.persistence.tables import PROFILE_POLICIES_TABLE, SOURCE_JOURNAL_HEADS_TABLE
+from powercontext.builtin.persistence.tables import (
+    PROFILE_POLICIES_TABLE,
+    SOURCE_JOURNAL_HEADS_TABLE,
+    SOURCES_TABLE,
+)
 
 
 async def enabled_profile_scopes(connection: AsyncConnection, scope_ids: tuple[str, ...]) -> frozenset[str]:
@@ -48,10 +53,17 @@ async def enabled_profile_scopes(connection: AsyncConnection, scope_ids: tuple[s
 class SourceProcessingPendingProvider:
     """Inspect journal metadata, never Source bodies, prompts, or models."""
 
-    def __init__(self, database: AsyncDatabase, binding_name: str, artifact_family: str) -> None:
+    def __init__(
+        self,
+        database: AsyncDatabase,
+        binding_name: str,
+        artifact_family: str,
+        count_threshold: int | None = None,
+    ) -> None:
         self._database = database
         self._binding = binding_name
         self._family = artifact_family
+        self._count_threshold = count_threshold
 
     async def reconcile(self, after_scope_id: str | None, limit: int, *, fence: ArtifactProcessingFence) -> str | None:
         heads = SOURCE_JOURNAL_HEADS_TABLE
@@ -74,3 +86,43 @@ class SourceProcessingPendingProvider:
                 if intent is None or intent.dirty_generation == intent.clean_generation:
                     await intents.mark_dirty(connection, scope, self._binding)
         return str(rows[-1][0]) if len(rows) == limit else None
+
+    async def request_count_reached(self, *, fence: ArtifactProcessingFence) -> bool:
+        """Accept at most one new window per scope and family at its count threshold."""
+
+        threshold = self._count_threshold
+        if threshold is None:
+            return False
+        heads = SOURCE_JOURNAL_HEADS_TABLE
+        sources = SOURCES_TABLE
+        async with self._database.transaction() as connection:
+            await ArtifactProcessingLeaseRepository().require_fence(connection, fence)
+            rows = (
+                await connection.execute(select(heads.c.scope_id, heads.c.position).order_by(heads.c.scope_id))
+            ).all()
+            cursors = SourceCursorRepository()
+            pending_repo = ArtifactProcessingPendingRepository()
+            intents = ArtifactProcessingIntentRepository()
+            accepted = False
+            for scope, _high in rows:
+                cursor = await cursors.load(connection, scope, self._binding)
+                cursor_sequence = 0 if cursor is None else cursor.cursor.sequence
+                pending_count = await connection.scalar(
+                    select(func.count())
+                    .select_from(sources)
+                    .where(sources.c.scope_id == scope, sources.c.journal_position > cursor_sequence)
+                )
+                if int(pending_count or 0) < threshold:
+                    continue
+                intent = await intents.load(connection, scope, self._binding, for_update=True)
+                if intent is not None and intent.requested_generation > intent.handled_generation:
+                    continue
+                if self._family == "topic-memory":
+                    pending = await pending_repo.load(connection, scope, self._binding, for_update=True)
+                    if pending is not None and pending.flush_generation > pending.handled_flush_generation:
+                        continue
+                    if await pending_repo.request_flush(connection, scope, self._binding) is None:
+                        continue
+                await intents.request(connection, scope, self._binding)
+                accepted = True
+            return accepted
