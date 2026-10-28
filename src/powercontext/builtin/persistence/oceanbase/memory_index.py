@@ -252,18 +252,13 @@ class OceanBaseMemoryFTSIndex:
             UNION ALL
             SELECT vc.* FROM (
                 SELECT 'vector' AS channel,
-                       h.memory_artifact_id,
-                       h.head_revision,
-                       h.entry_id,
-                       h.entry_version_id,
+                       m.memory_artifact_id,
+                       m.head_revision,
+                       m.entry_id,
+                       m.entry_version_id,
                        v.text,
                        l2_distance(m.embedding, :query_vector) AS distance
                 FROM pc_memory_vector_entries AS m
-                JOIN pc_memory_entry_heads AS h
-                  ON h.scope_id = m.scope_id
-                 AND h.memory_artifact_id = m.memory_artifact_id
-                 AND h.entry_id = m.entry_id
-                 AND h.entry_version_id = m.entry_version_id
                 JOIN pc_memory_entry_versions AS v
                   ON v.scope_id = m.scope_id
                  AND v.memory_artifact_id = m.memory_artifact_id
