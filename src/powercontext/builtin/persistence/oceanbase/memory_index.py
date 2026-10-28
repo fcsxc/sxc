@@ -233,7 +233,8 @@ class OceanBaseMemoryFTSIndex:
                        h.entry_id,
                        h.entry_version_id,
                        v.text,
-                       NULL AS distance
+                       CAST(NULL AS DOUBLE) AS distance,
+                       MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) AS fts_score
                 FROM pc_memory_entry_heads AS h
                 JOIN pc_memory_entry_versions AS v
                   ON v.scope_id = h.scope_id
@@ -243,7 +244,7 @@ class OceanBaseMemoryFTSIndex:
                   AND h.memory_artifact_id IN :memory_artifact_ids
                   AND MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE)
                   {tag_fts}
-                ORDER BY MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) DESC,
+                ORDER BY fts_score DESC,
                          h.memory_artifact_id,
                          h.entry_id,
                          h.entry_version_id
@@ -257,7 +258,8 @@ class OceanBaseMemoryFTSIndex:
                        m.entry_id,
                        m.entry_version_id,
                        v.text,
-                       l2_distance(m.embedding, :query_vector) AS distance
+                       l2_distance(m.embedding, :query_vector) AS distance,
+                       CAST(NULL AS DOUBLE) AS fts_score
                 FROM pc_memory_vector_entries AS m
                 JOIN pc_memory_entry_versions AS v
                   ON v.scope_id = m.scope_id
