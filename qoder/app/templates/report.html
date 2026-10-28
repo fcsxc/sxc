@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}学记 StudyMemo · 周报{% endblock %}
+{% block content %}
+<div class="card report">
+  <h2>📄 本周自动周报</h2>
+  <pre>{{ markdown }}</pre>
+  <p class="muted">周报由「本周打卡记录 + PowerContext 学习档案」自动生成，无需手动整理聊天记录。</p>
+</div>
+{% endblock %}

@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}学记 StudyMemo · 仪表盘{% endblock %}
+{% block content %}
+<section class="grid">
+  <div class="card">
+    <h2>今日复习计划（遗忘曲线）</h2>
+    {% if due %}
+      <ul class="due">
+        {% for t in due %}
+        <li>
+          <strong>{{ t.title }}</strong>
+          <span class="tag">{{ t.category }}</span>
+          <span class="muted">逾期 {{ t.due_days_ago }} 天 · 第 {{ t.stage + 1 }} 轮</span>
+          <form method="post" action="/review/{{ t.id }}" class="inline">
+            <button name="quality" value="good" class="ok">掌握 ✓</button>
+            <button name="quality" value="again" class="bad">又忘了 ✗</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">今天没有到期任务。添加任务并完成第一次复习后，计划会自动安排。</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <h2>学习档案 <span class="muted">(PowerContext 记忆)</span></h2>
+    {% if pc_ok %}<span class="dot ok"></span> PowerContext 已连接{% else %}<span class="dot bad"></span> 未连接{% endif %}
+    <div class="profile">
+      <h3>🎯 目标</h3>
+      {% for g in profile.goals %}<p>· {{ g.text }}</p>{% else %}<p class="muted">还没有目标</p>{% endfor %}
+      <h3>⚠️ 薄弱点</h3>
+      {% for w in profile.weak_points %}<p>· {{ w.text }}</p>{% else %}<p class="muted">暂无薄弱点</p>{% endfor %}
+      <h3>💡 偏好</h3>
+      {% for p in profile.preferences %}<p>· {{ p.text }}</p>{% else %}<p class="muted">暂无偏好</p>{% endfor %}
+      <h3>🏁 里程碑</h3>
+      {% for m in profile.milestones %}<p>· {{ m.text }}</p>{% else %}<p class="muted">暂无里程碑</p>{% endfor %}
+    </div>
+    <form method="post" action="/profile" class="profile-form">
+      <select name="kind">
+        <option value="goal">目标</option>
+        <option value="weak_point">薄弱点</option>
+        <option value="preference">偏好</option>
+        <option value="milestone">里程碑</option>
+      </select>
+      <input name="text" placeholder="例如：两周内掌握数据库索引原理" required>
+      <button>写入记忆</button>
+    </form>
+    <p class="muted">档案写入 PowerContext，重启应用后依然保留。</p>
+  </div>
+</section>
+
+<section class="grid">
+  <div class="card">
+    <h2>任务清单</h2>
+    <form method="post" action="/tasks" class="profile-form">
+      <input name="title" placeholder="任务 / 知识点，如：B+ 树索引结构" required>
+      <input name="category" placeholder="分类，如：数据库" list="cats">
+      <datalist id="cats">
+        <option value="数据库"><option value="算法"><option value="英语"><option value="论文"><option value="其他">
+      </datalist>
+      <button>添加</button>
+    </form>
+    <ul>
+      {% for t in tasks %}
+      <li>
+        <strong>{{ t.title }}</strong>
+        <span class="tag">{{ t.category }}</span>
+        <span class="muted">已复习 {{ t.reviews|length }} 次{% if t.mastered %} · 已掌握 ✓{% endif %}</span>
+        {% if not t.reviews %}
+        <form method="post" action="/review/{{ t.id }}" class="inline">
+          <button name="quality" value="good" class="ok">首次学习完成 ✓</button>
+        </form>
+        {% endif %}
+      </li>
+      {% else %}
+      <li class="muted">还没有任务，先添加一个吧。</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="card">
+    <h2>本周概览</h2>
+    <p>本周打卡 <strong>{{ total_reviews }}</strong> 次</p>
+    <p><a href="/report">→ 查看自动生成的周报</a></p>
+    <p class="muted">周报会把本周打卡与 PowerContext 中的目标、薄弱点自动对照。</p>
+  </div>
+</section>
+{% endblock %}

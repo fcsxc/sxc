@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}学记 StudyMemo{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="brand">📚 学记 <span>StudyMemo</span></div>
+  <nav>
+    <a href="/">仪表盘</a>
+    <a href="/report">周报</a>
+    <a href="/healthz" target="_blank">健康检查</a>
+  </nav>
+</header>
+<main>{% block content %}{% endblock %}</main>
+<footer>学记 StudyMemo · 学习档案由 PowerContext 持久化 · 本项目为 OceanBase 数据库大赛 Qoder 赛道作品</footer>
+</body>
+</html>
