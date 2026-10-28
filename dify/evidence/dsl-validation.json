@@ -1,6 +1,7 @@
 {
   "ok": true,
   "dsl": "when-night-remembers.yml",
+  "sha256": "55435bc24a2bed9bc66eaa4339a8b063c0e8e123e8eaa37311c93a1df6568970",
   "version": "0.1.5",
   "mode": "advanced-chat",
   "nodes": [
@@ -19,5 +20,26 @@
   "environment_variables": [
     "powercontext_url"
   ],
-  "code_nodes_compiled": 2
+  "dependencies": [
+    "langgenius/openai:0.0.13@9caa0421b5519db036aaccdbf1980d1071550767d6c59e9d9388dd386a92e9f6"
+  ],
+  "code_nodes_compiled": 2,
+  "code_nodes_executed": 2,
+  "model": {
+    "provider": "openai",
+    "name": "gpt-4.1"
+  },
+  "checks": [
+    "unique_node_ids",
+    "valid_edges",
+    "expected_node_order",
+    "required_memory_id",
+    "marketplace_dependencies",
+    "powercontext_environment_variable",
+    "powercontext_http_contract",
+    "python_code_compilation",
+    "python_code_execution",
+    "llm_prompt_wiring",
+    "answer_wiring"
+  ]
 }

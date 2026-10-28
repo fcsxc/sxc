@@ -1,0 +1,46 @@
+{
+  "ok": true,
+  "source": "Dify Cloud",
+  "run_date": "2026-10-28",
+  "app_name": "雾港夜话：会记住你的守夜人",
+  "app_mode": "advanced-chat",
+  "dsl": "when-night-remembers.yml",
+  "dsl_sha256": "55435bc24a2bed9bc66eaa4339a8b063c0e8e123e8eaa37311c93a1df6568970",
+  "model": {
+    "provider": "openai",
+    "name": "gpt-4.1"
+  },
+  "powercontext": {
+    "version": "1.4.1",
+    "transport": "public HTTPS tunnel to local PowerContext Server",
+    "scope_id": "scp_6p33r3zxvh8yfza0srw32j8n45",
+    "prepare_status": "ready"
+  },
+  "sample": {
+    "memory_id": "scp_6p33r3zxvh8yfza0srw32j8n45",
+    "input": "我回来了。你还记得铜钥匙和摆渡人的妹妹吗？",
+    "output": "【场景】\n雾港的夜色如潮水般渐浓，你推开酒馆厚重的木门，星光透过彩玻映在吧台。守夜人墨灯端坐在灯火下，微微一笑，仿佛早已预见你的归来。他指尖轻点桌面，铜钥匙正静静卧在黑檀木盒中，钥身斑斓，仿佛还在轻声吟唱那串熟悉的旋律。酒馆幽影中，一只裹着灰呢披肩的少女轮廓一闪，正是摆渡人的妹妹。你的归来如同潮汐回涌，带着旧日的承诺——满月前归还的钥匙，与那未竟的谜团。\n【余波】\n铜钥匙与少女的命运似乎紧密相连。你注意到铜钥匙比上次更沉默，表面多了一道如水波的细痕。妹妹低声问你：“钟楼的歌声，你听见了吗？”此刻归还钥匙，是契约的兑现，亦可能唤醒某些沉睡的秘密。\n【选择】\nA. 亲自将铜钥匙交还给墨灯，试图询问钥匙和钟楼的关系。\nB. 递给摆渡人的妹妹，让她决定钥匙的去向，观察她的反应。"
+  },
+  "checks": {
+    "workflow_returned_answer": true,
+    "cross_session_memory_recalled": true,
+    "recalled_items": [
+      "会唱歌的铜钥匙",
+      "满月前归还的钥匙",
+      "摆渡人的妹妹"
+    ],
+    "current_input_was_handled": true,
+    "ab_choices_returned": true,
+    "expected_sections": [
+      "【场景】",
+      "【余波】",
+      "【选择】"
+    ]
+  },
+  "observations": [
+    "The answer surfaced the previously stored copper key and the promise to return it before the full moon.",
+    "The answer connected the stored story to the ferryman's sister, which was not present in the current user input.",
+    "The answer ended with two concrete A/B choices.",
+    "An earlier attempt returned HTTP 502 because the temporary tunnel had expired; after restarting the public HTTPS tunnel the full workflow completed."
+  ]
+}

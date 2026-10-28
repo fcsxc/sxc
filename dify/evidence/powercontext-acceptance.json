@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "ran_at": "2026-10-28T09:16:15.952326+00:00",
+  "powercontext_version": "1.4.1",
+  "base_url": "http://127.0.0.1:8000",
+  "scope_id": "scp_3whp884tpkzhkdm5f639ajv0kj",
+  "turns": [
+    {
+      "turn": 1,
+      "remember": {
+        "changed": true,
+        "records": [
+          {
+            "artifact": {
+              "family": "atomic-memory",
+              "artifact_id": "art_4aae4ba801584348a7b4385c8efc59eb",
+              "revision": 1
+            },
+            "kind": "decision",
+            "text": "第一回合：玩家把会唱歌的铜钥匙交给守夜人墨灯，约定满月之夜回来取回；玩家选择沿着雾中的蓝色灯影调查失踪的摆渡人。",
+            "state": "active",
+            "state_version": 0,
+            "merged_into_id": null
+          }
+        ]
+      },
+      "prepare_status": "ready",
+      "recalled": [
+        "会唱歌的铜钥匙",
+        "满月之夜",
+        "蓝色灯影"
+      ],
+      "content_bytes": 709
+    },
+    {
+      "turn": 2,
+      "remember": {
+        "changed": true,
+        "records": [
+          {
+            "artifact": {
+              "family": "atomic-memory",
+              "artifact_id": "art_a36cfb26302b47eaaa8f5a8d27e188b3",
+              "revision": 1
+            },
+            "kind": "decision",
+            "text": "第二回合：玩家选择 A，在满月前把铜钥匙暂借给摆渡人的妹妹，钥匙唱出了通往潮汐钟楼的旋律，但守夜人提醒玩家必须在午夜前归还。",
+            "state": "active",
+            "state_version": 0,
+            "merged_into_id": null
+          }
+        ]
+      },
+      "historical_prepare_status": "ready",
+      "historical_recalled": [
+        "会唱歌的铜钥匙",
+        "满月之夜",
+        "蓝色灯影"
+      ],
+      "continuing_prepare_status": "ready",
+      "continuing_recalled": [
+        "铜钥匙",
+        "摆渡人的妹妹",
+        "潮汐钟楼",
+        "午夜前归还"
+      ],
+      "historical_content_bytes": 1068,
+      "continuing_content_bytes": 1068
+    }
+  ],
+  "dify_contract": {
+    "context_node": "POST /v1/context/prepare",
+    "remember_node": "POST /v1/memory/remember",
+    "scope_input": "将 scope_id 填入启动变量 memory_id"
+  }
+}

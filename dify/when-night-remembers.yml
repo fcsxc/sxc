@@ -6,6 +6,11 @@ app:
   name: 雾港夜话：会记住你的守夜人
   use_icon_as_answer_icon: false
 kind: app
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/openai:0.0.13@9caa0421b5519db036aaccdbf1980d1071550767d6c59e9d9388dd386a92e9f6
 version: 0.1.5
 workflow:
   conversation_variables: []
@@ -232,7 +237,7 @@ workflow:
           completion_params:
             temperature: 0.9
           mode: chat
-          name: gpt-4o-mini
+          name: gpt-4.1
           provider: openai
         prompt_template:
         - id: system-prompt
