@@ -226,51 +226,47 @@ class OceanBaseMemoryFTSIndex:
         vector_approximate = "" if request.tag_filter is not None else " APPROXIMATE"
         statement = text(
             f"""
-            SELECT f.* FROM (
-                SELECT 'fts' AS channel,
-                       h.memory_artifact_id,
-                       h.head_revision,
-                       h.entry_id,
-                       h.entry_version_id,
-                       v.text,
-                       CAST(NULL AS DOUBLE) AS distance,
-                       MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) AS fts_score
-                FROM pc_memory_entry_heads AS h
-                JOIN pc_memory_entry_versions AS v
-                  ON v.scope_id = h.scope_id
-                 AND v.memory_artifact_id = h.memory_artifact_id
-                 AND v.entry_version_id = h.entry_version_id
-                WHERE h.scope_id = :scope_id
-                  AND h.memory_artifact_id IN :memory_artifact_ids
-                  AND MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE)
-                  {tag_fts}
-                ORDER BY fts_score DESC,
-                         h.memory_artifact_id,
-                         h.entry_id,
-                         h.entry_version_id
-                LIMIT :candidate_limit
-            ) AS f
+            (SELECT 'fts' AS channel,
+                    h.memory_artifact_id,
+                    h.head_revision,
+                    h.entry_id,
+                    h.entry_version_id,
+                    v.text,
+                    CAST(NULL AS DOUBLE) AS distance,
+                    MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) AS fts_score
+             FROM pc_memory_entry_heads AS h FORCE INDEX ({_OCEANBASE_FTS_INDEX_NAME})
+             JOIN pc_memory_entry_versions AS v
+               ON v.scope_id = h.scope_id
+              AND v.memory_artifact_id = h.memory_artifact_id
+              AND v.entry_version_id = h.entry_version_id
+             WHERE h.scope_id = :scope_id
+               AND h.memory_artifact_id IN :memory_artifact_ids
+               AND MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE)
+               {tag_fts}
+             ORDER BY fts_score DESC,
+                      h.memory_artifact_id,
+                      h.entry_id,
+                      h.entry_version_id
+             LIMIT :candidate_limit)
             UNION ALL
-            SELECT vc.* FROM (
-                SELECT 'vector' AS channel,
-                       m.memory_artifact_id,
-                       m.head_revision,
-                       m.entry_id,
-                       m.entry_version_id,
-                       v.text,
-                       l2_distance(m.embedding, :query_vector) AS distance,
-                       CAST(NULL AS DOUBLE) AS fts_score
-                FROM pc_memory_vector_entries AS m
-                JOIN pc_memory_entry_versions AS v
-                  ON v.scope_id = m.scope_id
-                 AND v.memory_artifact_id = m.memory_artifact_id
-                 AND v.entry_version_id = m.entry_version_id
-                WHERE m.scope_id = :scope_id
-                  AND m.memory_artifact_id IN :memory_artifact_ids
-                  {tag_vector}
-                ORDER BY l2_distance(m.embedding, :query_vector){vector_approximate}
-                LIMIT :candidate_limit
-            ) AS vc
+            (SELECT 'vector' AS channel,
+                    m.memory_artifact_id,
+                    m.head_revision,
+                    m.entry_id,
+                    m.entry_version_id,
+                    v.text,
+                    l2_distance(m.embedding, :query_vector) AS distance,
+                    CAST(NULL AS DOUBLE) AS fts_score
+             FROM pc_memory_vector_entries AS m FORCE INDEX ({_OCEANBASE_VECTOR_INDEX_NAME})
+             JOIN pc_memory_entry_versions AS v
+               ON v.scope_id = m.scope_id
+              AND v.memory_artifact_id = m.memory_artifact_id
+              AND v.entry_version_id = m.entry_version_id
+             WHERE m.scope_id = :scope_id
+               AND m.memory_artifact_id IN :memory_artifact_ids
+               {tag_vector}
+             ORDER BY l2_distance(m.embedding, :query_vector){vector_approximate}
+             LIMIT :candidate_limit)
             """  # noqa: S608
         ).bindparams(
             bindparam("memory_artifact_ids", expanding=True),
