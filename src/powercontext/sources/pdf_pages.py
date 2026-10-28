@@ -33,7 +33,7 @@ import math
 import re
 from collections import Counter
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, unquote
 
 from pydantic import BaseModel, model_validator
 from pypdf import PdfReader
@@ -733,6 +733,9 @@ async def search_pdf_pages(memory: Any, question: str, limit: int = 10) -> tuple
     documents = _documents(entries)
     if not documents:
         return ()
+    company_documents = _company_documents(documents, question)
+    if company_documents:
+        documents = company_documents
     token_documents = [_tokens(text) for text, _ in documents]
     entry_ids = [record.entry.entry_id for _, record in documents]
     scores = _rank(question, token_documents, [text for text, _ in documents], entry_ids, search_hits)
@@ -792,6 +795,36 @@ def _documents(entries: tuple[Any, ...]) -> list[tuple[str, Any]]:
         if isinstance(text, str) and text.strip():
             documents.append((text, record))
     return documents
+
+
+def _company_documents(documents: list[tuple[str, Any]], question: str) -> list[tuple[str, Any]]:
+    """Prefer pages from the report whose company name appears in the question."""
+
+    compact_question = re.sub(r"[^a-z0-9]", "", question.casefold())
+    matches: set[str] = set()
+    for _, record in documents:
+        source_id = _page_key(record)
+        if not source_id.startswith("pdf:"):
+            continue
+        parts = source_id.split(":", 3)
+        if len(parts) < 4:
+            continue
+        document_id = unquote(parts[1])
+        company = re.split(r"_(?:19|20)\d{2}", document_id.casefold(), maxsplit=1)[0]
+        compact_company = re.sub(r"[^a-z0-9]", "", company)
+        if len(compact_company) >= 2 and compact_company in compact_question:
+            matches.add(document_id)
+    if not matches:
+        return []
+    selected: list[tuple[str, Any]] = []
+    for text, record in documents:
+        source_id = _page_key(record)
+        if not source_id.startswith("pdf:"):
+            continue
+        parts = source_id.split(":", 3)
+        if len(parts) >= 4 and unquote(parts[1]) in matches:
+            selected.append((text, record))
+    return selected
 
 
 def _top_citations(
