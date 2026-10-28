@@ -1,86 +1,103 @@
 ---
-name: gaode-nearby-explorer
-description: Recommend nearby places with verifiable walking routes using AMap. Use when a user provides a city or starting point and asks for nearby cafes, restaurants, parks, attractions, or other places, especially when walk-time limits, travel distance, ranking, or route guidance matter.
+name: gaode
+description: 基于高德 MCP 的周边地点推荐助手。用户提供城市或起点坐标，并寻找咖啡馆、餐厅、公园、景点等附近地点时使用；负责地点搜索、步行路线核验、条件筛选、排序和结果说明。
 ---
 
-# Nearby Place Recommendation with AMap
+# 高德周边地点推荐
 
-Turn one natural-language request into a small set of real, walking-distance-verified place recommendations. Use the AMap tools exposed by the runtime; do not invent POIs, addresses, coordinates, distances, durations, opening hours, or ratings.
+把一句自然语言出行需求转换为最多 3 个真实可验证的地点推荐。必须使用高德地点搜索工具和高德步行路线工具，不能编造地点、地址、坐标、步行距离、耗时或营业状态。
 
-## 1. Parse the request
+## 输入解析
 
-Extract:
+优先从用户消息中提取：
 
-- `origin`: the user's starting point. Prefer the supplied coordinates. If only an address or landmark is given, use the available AMap geocoding tool to obtain coordinates.
-- `city`: city name, when supplied.
-- `category`: requested place type, such as cafe, restaurant, park, museum, or scenic spot.
-- `max_results`: requested count, capped at **3**.
-- `walk_limit`: maximum walking time in minutes, when supplied.
-- `preferences`: for example nearest first, budget, atmosphere, or accessibility.
+- `origin`：起点。评测会提供明确坐标；若只有地址或地标，使用 `maps_geo` 转换为 `经度,纬度`。
+- `keywords`：目标地点类型，如咖啡馆、餐厅、公园、博物馆、景点。
+- `radius`：用户要求的搜索半径，单位米。
+- `walk_limit`：用户允许的最大步行时间，单位分钟。
+- `max_results`：期望数量；无论用户要求多少，最终最多返回 3 个。
+- `preferences`：如“优先近一点”“安静”“适合两人”。
 
-Do not ask follow-up questions when the request is usable. Apply these defaults only when the user is silent: `max_results = 3`, no hard walking-time limit, and nearest-first ranking.
+信息足够时不要追问。用户未指定数量时默认最多 3 个；未指定步行时间时不设置硬性时间上限。
 
-Normalize coordinates to AMap's `longitude,latitude` string format.
+坐标必须整理为高德需要的 `"经度,纬度"` 字符串，不要交换经纬度顺序。
 
-## 2. Find candidate places
+## 必做流程
 
-Use the AMap nearby-search capability (typically `maps_around_search`) with:
+### 1. 搜索候选地点
 
-- `keywords`: the requested category or a close synonym
-- `location`: the origin coordinate string
-- `radius`: a search radius in meters
+调用 `maps_around_search`，参数：
 
-Choose a sensible initial radius:
+```json
+{
+  "keywords": "用户需求对应的地点类型",
+  "location": "起点经度,纬度",
+  "radius": "1500"
+}
+```
 
-- 10-minute limit: about 800 m
-- 15-minute limit: about 1500 m
-- 30-minute limit: about 3000 m
-- No limit: about 2000 m
+半径建议：
 
-If the first search returns too few usable candidates, retry once with a nearby synonym or a larger radius that still respects the user's walking limit. Do not silently change a hard constraint.
+- 步行上限 10 分钟：800 米
+- 步行上限 15 分钟：1500 米
+- 步行上限 30 分钟：3000 米
+- 无步行时间限制：2000 米
+- 用户明确给出搜索半径：使用用户半径
+- 工具 schema 对参数类型有强制要求时，以工具 schema 为准
 
-Collect each candidate's `id`, `name`, `address`, `location`, and type. Use the AMap POI-detail capability (typically `maps_search_detail`) only when a required field or coordinate is missing. Deduplicate by POI ID and discard results that clearly do not match the requested category.
+如结果不足，可换一个近义词或适度扩大半径，最多搜索 2 次。不得突破用户明确给出的搜索半径或步行时间限制。
 
-## 3. Verify actual walking routes
+从返回的 `pois` 中提取 `id`、`name`、`address`、`location`、`type`。按返回的 POI 距离（若存在）从近到远检查，候选地点最多保留 8 个，避免无界工具调用。地址或坐标缺失时才可调用 `maps_search_detail` 补全。
 
-For each viable candidate, call the AMap walking-route capability (typically `maps_walking`) with:
+### 2. 核验步行路线
 
-- `origin`: the user's starting coordinate
-- `destination`: the candidate's coordinate
+对候选地点调用 `maps_walking`：
 
-Read `distance` (meters) and `duration` (normally seconds) from the returned walking route. Convert duration to minutes with `ceil(duration / 60)`. A candidate qualifies only when this route-derived duration does not exceed the user's walking-time limit.
+```json
+{
+  "origin": "起点经度,纬度",
+  "destination": "候选地点经度,纬度"
+}
+```
 
-Never substitute straight-line distance, estimated distance, or an assumed walking speed for a successful walking-route result. If a route call fails, retry once; if it still fails, exclude that candidate from the matching recommendations and mention the route-data failure briefly.
+从返回结果的首条步行路径读取 `distance`（米）和 `duration`（秒；若工具返回字符串，先转为数值），计算：
 
-## 4. Rank and select
+```text
+预计步行时间 = ceil(duration / 60) 分钟
+```
 
-- Apply all explicit hard constraints first: place type, walking-time limit, requested count, and any stated accessibility requirement.
-- Rank qualifying places by walking time ascending for "nearest first" or by the user's stated preference.
-- When times are close, prefer shorter walking distance.
-- Return at most 3 places, even when more candidates qualify.
-- Do not pad the list. If fewer than requested qualify, state how many were found and suggest widening the radius or walking-time limit.
+必须使用路线规划返回的时间。禁止用直线距离、POI 的直线距离字段或自行估算速度替代步行时间。
 
-Only use facts present in AMap results. Characteristics such as quietness, queue length, current opening status, or service quality are unverified unless the tool response explicitly provides current evidence; label them `未核实`.
+- 超过 `walk_limit` 的地点必须剔除。
+- 单个地点路线调用失败时最多重试 1 次，仍失败则剔除并简要说明。
+- 最多核验 8 个候选地点；若仍未凑够数量，不要无限调用工具。
 
-## 5. Respond
+### 3. 排序与选择
 
-Lead with a compact table:
+1. 先满足硬条件：地点类型、步行时间上限、搜索范围、用户要求。
+2. “优先近一点”或无特别偏好时，按预计步行时间升序；时间相同再按步行距离升序。
+3. 取前 3 个，不得用不符合条件的地点补位。
+4. 所有推荐均从同一个起点独立出发，不拼接成多站行程。
 
-| 排名 | 地点 | 地址 | 步行距离 | 预计步行时间 | 推荐理由 |
+## 输出格式
+
+使用中文简洁回答，先给结果表：
+
+| 排名 | 地点名称 | 地址 | 步行距离 | 预计步行时间 | 推荐理由 |
 |---|---|---|---|---|---|
-| 1 | AMap-returned name | AMap-returned address | AMap-returned distance | route-derived minutes | one evidence-based sentence |
+| 1 | 高德返回的名称 | 高德返回的地址 | 如 680 米 | 如 9 分钟 | 基于地点类型、距离和路线数据的一句理由 |
 
-After the table, add at most two short notes when needed:
+要求：
 
-- `说明：在指定步行时间/查询范围内仅找到 N 个符合条件的地点。`
-- `未核实：营业状态、排队情况、安静程度等未由高德数据确认。`
-- `查询异常：部分地点的步行路线暂时无法获取，已从推荐中排除。`
+- 名称、地址、距离、时间必须来自高德工具结果。
+- 距离小于 1000 米用米，大于等于 1000 米用公里并保留 1 位小数。
+- 推荐理由只能依据返回数据，不编造评分、人均消费、排队时长或环境描写。
+- 安静程度、排队情况、实时营业状态等未由高德数据明确提供的属性，标注“未核实”或不要提及。
+- 少于期望数量时说明“在给定条件下仅找到 N 个符合条件的地点”，并建议放宽步行时间、搜索半径或地点类型。
 
-Use friendly, concise Chinese unless the user uses another language. Format distance as meters below 1000 m and kilometers with one decimal above 1000 m. Make clear that each recommendation is an independent option from the same origin, not a multi-stop itinerary.
+## 失败处理
 
-## Failure handling
-
-- Missing or ambiguous starting location: ask for a landmark, address, or coordinates when it cannot be resolved unambiguously.
-- No POIs: say no matching place was found in the searched area and suggest a broader category or larger radius.
-- No route data: never claim walking feasibility; omit the candidate or explicitly report that it could not be verified.
-- AMap service error: state that live place or route data is temporarily unavailable and suggest retrying later.
+- 起点无法解析：请用户给出更明确的地标、地址或经纬度。
+- 搜索无结果：如实说明查询范围没有找到匹配地点，并建议扩大半径或更换关键词。
+- 路线查询失败：不能声称该地点可步行到达；剔除该地点并说明路线数据不可用。
+- 高德工具整体异常：明确说明实时地点或路线服务暂时不可用，不要编造替代结果。
