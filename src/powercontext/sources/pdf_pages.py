@@ -24,7 +24,6 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 from pypdf import PdfReader
-from pypdf.errors import PyPdfError
 
 from powercontext.sources import TEXT_EVIDENCE_PROJECTION_KEY, AdapterSourceDefinition, TextEvidence
 from powercontext.sources.models import Source, SourceMaterialization
@@ -90,7 +89,7 @@ def parse_pdf_document(value: PDFDocumentInput) -> tuple[PDFPageInput, ...]:
     try:
         reader = PdfReader(io.BytesIO(bytes(content)), strict=True)
         pages = tuple((page.extract_text() or "") for page in reader.pages)
-    except (PyPdfError, ValueError, TypeError, IndexError, KeyError, OverflowError) as error:
+    except Exception as error:  # noqa: BLE001 - any incomplete parse must surface as ValueError
         raise ValueError("PDF cannot be completely parsed") from error
     return tuple(
         PDFPageInput(
