@@ -447,6 +447,9 @@ _STATEMENT_TERMS: dict[str, frozenset[str]] = {
         "payable",
         "accounts",
         "inventory",
+        "tax",
+        "effective",
+        "rate",
     }),
     "balance_sheet": frozenset({
         "working",
@@ -513,6 +516,9 @@ _STATEMENT_TERMS: dict[str, frozenset[str]] = {
         "payable",
         "cogs",
         "inventory",
+        "tax",
+        "effective",
+        "rate",
     }),
 }
 
