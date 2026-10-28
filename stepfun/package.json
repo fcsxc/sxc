@@ -1,0 +1,28 @@
+{
+  "name": "stepfun-local-rag",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser-side embedding and seekdb hybrid retrieval mini knowledge base",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node server/index.mjs",
+    "build": "vite build",
+    "start": "node server/index.mjs --production",
+    "test": "node --test tests/*.test.mjs",
+    "benchmark:quality": "node scripts/quality-benchmark.mjs"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "4.3.2",
+    "@oceanbase/seekdb-node": "^1.4.0",
+    "@seekdb/js-bindings": "1.4.0",
+    "express": "5.3.0",
+    "seekdb": "1.4.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1",
+    "vite": "8.3.5"
+  }
+}

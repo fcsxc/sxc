@@ -1,0 +1,23 @@
+{
+  "startedAt": "2026-10-28T03:50:51.945Z",
+  "browser": "Edge headless",
+  "consoleErrors": [],
+  "requestFailures": [],
+  "httpErrors": [],
+  "backend": "WASM · INT8",
+  "backendNote": "WebGPU 不可用 · 已自动降级 WASM / INT8",
+  "importStatus": "已导入 12 个文本块；写入 33.7 ms，索引刷新 605.5 ms（总墙钟 646.7 ms）。",
+  "docCount": "12",
+  "resultCount": 5,
+  "firstResult": "增量写入 seekdb 后调用 refresh_index，新导入的文档才能立刻参与向量索引检索。",
+  "metrics": {
+    "load": "851.0 ms",
+    "embed": "253.9 ms · 47.3 docs/s",
+    "ingest": "639.1 ms",
+    "queryEmbed": "8.1 ms",
+    "retrieval": "12.9 ms",
+    "e2e": "23.7 ms"
+  },
+  "ok": true,
+  "endedAt": "2026-10-28T03:50:54.926Z"
+}

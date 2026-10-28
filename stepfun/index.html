@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1320" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%E2%97%88%3C/text%3E%3C/svg%3E" />
+    <title>LocalLens · 端侧知识库</title>
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">◈</div>
+          <div>
+            <h1>LocalLens</h1>
+            <p>端侧向量化 × seekdb 混合检索</p>
+          </div>
+        </div>
+        <div class="status-cluster">
+          <span id="backendBadge" class="badge badge-muted">模型未加载</span>
+          <span id="dbBadge" class="badge badge-muted">seekdb 连接中</span>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel import-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">01 / LOCAL INGEST</span>
+              <h2>建立你的私人知识库</h2>
+            </div>
+            <button id="sampleBtn" class="button ghost small">载入示例</button>
+          </div>
+
+          <div class="session-strip">
+            <label for="kbId">知识库会话</label>
+            <input id="kbId" spellcheck="false" />
+            <button id="newKbBtn" class="button ghost small">新建</button>
+          </div>
+
+          <label class="field-label" for="docInput">文本语料 <span>每行一个文档</span></label>
+          <textarea id="docInput" spellcheck="false" placeholder="粘贴个人笔记、产品文档或项目资料……"></textarea>
+
+          <div class="controls-row">
+            <label class="select-label">
+              批大小
+              <select id="batchSize">
+                <option value="4">4</option>
+                <option value="8" selected>8</option>
+                <option value="16">16</option>
+              </select>
+            </label>
+            <button id="loadModelBtn" class="button secondary">加载端侧模型</button>
+            <button id="importBtn" class="button primary">向量化并写入 seekdb</button>
+          </div>
+
+          <div class="progress-wrap" aria-live="polite">
+            <div class="progress-meta">
+              <span id="progressLabel">等待加载模型</span>
+              <span id="progressPercent">0%</span>
+            </div>
+            <div class="progress-track"><div id="progressBar" class="progress-bar"></div></div>
+          </div>
+
+          <div class="micro-stats">
+            <div><span>当前文档</span><strong id="docCount">0</strong></div>
+            <div><span>模型</span><strong id="modelInfo">all-MiniLM-L6-v2</strong></div>
+            <div><span>向量维度</span><strong>512</strong></div>
+          </div>
+
+          <p id="statusMessage" class="status-message">文档不会离开本机：向量由浏览器生成，原文与向量写入本地 seekdb。</p>
+        </section>
+
+        <section class="panel search-panel">
+          <div class="panel-heading">
+            <div>
+              <span class="eyebrow">02 / HYBRID RETRIEVAL</span>
+              <h2>在知识库里找答案</h2>
+            </div>
+            <div class="backend-note" id="backendNote">WebGPU 优先 · 自动降级 WASM</div>
+          </div>
+
+          <div class="search-box">
+            <input id="searchInput" placeholder="例如：怎样让新文档马上能被检索到？" />
+            <button id="searchBtn" class="button primary">混合检索</button>
+          </div>
+
+          <div id="querySuggestions" class="suggestions"></div>
+
+          <div id="results" class="results empty-state">
+            <div class="empty-icon">⌁</div>
+            <h3>检索结果将在这里出现</h3>
+            <p>查询向量同样在浏览器本地生成，seekdb 负责向量与全文融合排序。</p>
+          </div>
+        </section>
+      </main>
+
+      <section class="panel metrics-panel">
+        <div class="panel-heading compact">
+          <div>
+            <span class="eyebrow">03 / TELEMETRY</span>
+            <h2>本次操作实测</h2>
+          </div>
+          <span class="hint">首次加载与热请求分开记录</span>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric"><span>模型加载</span><strong id="metricLoad">—</strong></div>
+          <div class="metric"><span>文档向量化</span><strong id="metricEmbed">—</strong></div>
+          <div class="metric"><span>写入 + 刷新</span><strong id="metricIngest">—</strong></div>
+          <div class="metric"><span>查询向量化</span><strong id="metricQueryEmbed">—</strong></div>
+          <div class="metric"><span>seekdb 检索</span><strong id="metricRetrieval">—</strong></div>
+          <div class="metric accent"><span>端到端</span><strong id="metricE2e">—</strong></div>
+        </div>
+        <div class="volume-row">
+          <span>ONNX 模型体积：FP32 90.5 MiB → INT8 22.9 MiB，压缩比 3.95×；WebGPU 使用 FP16 45.3 MiB。</span>
+        </div>
+      </section>
+
+      <footer>
+        <span>LocalLens / seekdb × StepFun track</span>
+        <span>Local embedding only · No cloud inference API</span>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

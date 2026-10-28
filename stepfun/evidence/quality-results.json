@@ -1,0 +1,177 @@
+{
+  "runtime": "Transformers.js on Node/onnxruntime-node CPU",
+  "browserNote": "WebGPU/WASM runtime timings are recorded live by the browser UI.",
+  "model": "Xenova/bge-small-zh-v1.5",
+  "revision": "75c43b069aac4d136ba6bc1122f995fedcfd2781",
+  "corpusDocuments": 12,
+  "queries": 4,
+  "sizes": {
+    "fp32Onnx": 94851877,
+    "fp16Onnx": 47497427,
+    "int8Onnx": 24010842,
+    "tokenizerBundle": 441007,
+    "onnxCompressionRatioInt8": 3.9503769588754944
+  },
+  "results": [
+    {
+      "dtype": "fp32",
+      "loadMs": 21683.782300000003,
+      "docEmbedMs": 36.81499999999869,
+      "docThroughput": 325.9540947983275,
+      "queryLatencyMedianMs": 2.300699999999779,
+      "quality": {
+        "recallAt3": 0.875,
+        "ndcgAt3": 0.9032867981913646,
+        "perQuery": [
+          {
+            "query": "数据库内部做向量和全文混合检索",
+            "rankedIds": [
+              "doc-seekdb-hybrid",
+              "doc-privacy",
+              "doc-refresh"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "浏览器没有 WebGPU 怎么办",
+            "rankedIds": [
+              "doc-wasm",
+              "doc-session",
+              "doc-browser-embedding"
+            ],
+            "recall": 0.5,
+            "ndcg": 0.6131471927654584
+          },
+          {
+            "query": "怎样让新文档马上能搜到",
+            "rankedIds": [
+              "doc-refresh",
+              "doc-privacy",
+              "doc-browser-embedding"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "减少模型调用次数和内存占用",
+            "rankedIds": [
+              "doc-batching",
+              "doc-int8",
+              "doc-refresh"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          }
+        ]
+      }
+    },
+    {
+      "dtype": "q8",
+      "loadMs": 5313.9781,
+      "docEmbedMs": 24.423099999999977,
+      "docThroughput": 491.338118420676,
+      "queryLatencyMedianMs": 1.84599999999773,
+      "quality": {
+        "recallAt3": 0.875,
+        "ndcgAt3": 0.9032867981913646,
+        "perQuery": [
+          {
+            "query": "数据库内部做向量和全文混合检索",
+            "rankedIds": [
+              "doc-seekdb-hybrid",
+              "doc-privacy",
+              "doc-refresh"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "浏览器没有 WebGPU 怎么办",
+            "rankedIds": [
+              "doc-wasm",
+              "doc-browser-embedding",
+              "doc-session"
+            ],
+            "recall": 0.5,
+            "ndcg": 0.6131471927654584
+          },
+          {
+            "query": "怎样让新文档马上能搜到",
+            "rankedIds": [
+              "doc-refresh",
+              "doc-privacy",
+              "doc-browser-embedding"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "减少模型调用次数和内存占用",
+            "rankedIds": [
+              "doc-batching",
+              "doc-int8",
+              "doc-privacy"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          }
+        ]
+      }
+    },
+    {
+      "dtype": "fp16",
+      "loadMs": 10216.118999999999,
+      "docEmbedMs": 49.95990000000165,
+      "docThroughput": 240.19263449285532,
+      "queryLatencyMedianMs": 2.2775999999939813,
+      "quality": {
+        "recallAt3": 0.875,
+        "ndcgAt3": 0.9032867981913646,
+        "perQuery": [
+          {
+            "query": "数据库内部做向量和全文混合检索",
+            "rankedIds": [
+              "doc-seekdb-hybrid",
+              "doc-privacy",
+              "doc-refresh"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "浏览器没有 WebGPU 怎么办",
+            "rankedIds": [
+              "doc-wasm",
+              "doc-session",
+              "doc-browser-embedding"
+            ],
+            "recall": 0.5,
+            "ndcg": 0.6131471927654584
+          },
+          {
+            "query": "怎样让新文档马上能搜到",
+            "rankedIds": [
+              "doc-refresh",
+              "doc-privacy",
+              "doc-browser-embedding"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          },
+          {
+            "query": "减少模型调用次数和内存占用",
+            "rankedIds": [
+              "doc-batching",
+              "doc-int8",
+              "doc-refresh"
+            ],
+            "recall": 1,
+            "ndcg": 1
+          }
+        ]
+      }
+    }
+  ],
+  "failures": []
+}

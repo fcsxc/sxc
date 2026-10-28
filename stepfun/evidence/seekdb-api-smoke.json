@@ -1,0 +1,36 @@
+{
+  "insert": {
+    "ok": true,
+    "writeMs": 189.2472000000016,
+    "refreshMs": 654.7274999999972,
+    "count": 2
+  },
+  "search": {
+    "ok": true,
+    "retrievalMs": 28.05739999999787,
+    "results": [
+      {
+        "id": "api-a",
+        "text": "seekdb 混合检索 数据库",
+        "metadata": {
+          "doc_id": "api-a",
+          "source": "api-test",
+          "chunk_index": 0,
+          "imported_at": "2026-10-28T03:19:19.829Z"
+        },
+        "distance": 1.6626506024096386
+      },
+      {
+        "id": "api-b",
+        "text": "浏览器 本地模型 推理",
+        "metadata": {
+          "doc_id": "api-b",
+          "source": "api-test",
+          "chunk_index": 0,
+          "imported_at": "2026-10-28T03:19:19.831Z"
+        },
+        "distance": 0.5
+      }
+    ]
+  }
+}

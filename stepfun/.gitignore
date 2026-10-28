@@ -1,0 +1,9 @@
+node_modules/
+dist/
+data/seekdb-*/
+.cache/
+.seekdb/
+.env
+*.log
+data/*/
+evidence/browser-wasm-error.png

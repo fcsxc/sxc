@@ -1,0 +1,21 @@
+{
+  "upstream": "BAAI/bge-small-zh-v1.5",
+  "totals": {
+    "int8Runtime": 24451849,
+    "fp16CompressionRatio": 1.988,
+    "int8SizeReductionPercent": 74.34,
+    "int8CompressionRatio": 3.897,
+    "fp16Runtime": 47938434,
+    "fp32Runtime": 95292884
+  },
+  "revision": "75c43b069aac4d136ba6bc1122f995fedcfd2781",
+  "files": {
+    "tokenizerBundle": 441007,
+    "int8Onnx": 24010842,
+    "fp16Onnx": 47497427,
+    "fp32Onnx": 94851877
+  },
+  "source": "https://hf-mirror.com/Xenova/bge-small-zh-v1.5",
+  "measurement": "Hugging Face model file sizes fetched from hf-mirror API; tokenizerBundle includes config.json, tokenizer.json, tokenizer_config.json, special_tokens_map.json and quantize_config.json.",
+  "model": "Xenova/bge-small-zh-v1.5"
+}

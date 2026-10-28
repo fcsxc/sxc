@@ -1,0 +1,16 @@
+
+> stepfun-local-rag@1.0.0 test
+> node --test tests/*.test.mjs
+
+✔ seekdb-js performs hybrid retrieval after refresh (7735.3379ms)
+✔ validates 512-dimensional finite embeddings (0.8407ms)
+✔ normalizes a valid document batch (0.1734ms)
+✔ rejects empty and oversized batches (0.1771ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 7898.746
