@@ -16,6 +16,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pyobvector import VECTOR, VectorIndex
 from sqlalchemy import (
     BigInteger,
@@ -226,47 +228,65 @@ class OceanBaseMemoryFTSIndex:
         vector_approximate = "" if request.tag_filter is not None else " APPROXIMATE"
         statement = text(
             f"""
-            (SELECT 'fts' AS channel,
-                    h.memory_artifact_id,
-                    h.head_revision,
-                    h.entry_id,
-                    h.entry_version_id,
-                    v.text,
-                    CAST(NULL AS DOUBLE) AS distance,
-                    MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) AS fts_score
-             FROM pc_memory_entry_heads AS h FORCE INDEX ({_OCEANBASE_FTS_INDEX_NAME})
-             JOIN pc_memory_entry_versions AS v
-               ON v.scope_id = h.scope_id
-              AND v.memory_artifact_id = h.memory_artifact_id
-              AND v.entry_version_id = h.entry_version_id
-             WHERE h.scope_id = :scope_id
-               AND h.memory_artifact_id IN :memory_artifact_ids
-               AND MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE)
-               {tag_fts}
-             ORDER BY fts_score DESC,
-                      h.memory_artifact_id,
-                      h.entry_id,
-                      h.entry_version_id
-             LIMIT :candidate_limit)
-            UNION ALL
-            (SELECT 'vector' AS channel,
-                    m.memory_artifact_id,
-                    m.head_revision,
-                    m.entry_id,
-                    m.entry_version_id,
-                    v.text,
-                    l2_distance(m.embedding, :query_vector) AS distance,
-                    CAST(NULL AS DOUBLE) AS fts_score
-             FROM pc_memory_vector_entries AS m FORCE INDEX ({_OCEANBASE_VECTOR_INDEX_NAME})
-             JOIN pc_memory_entry_versions AS v
-               ON v.scope_id = m.scope_id
-              AND v.memory_artifact_id = m.memory_artifact_id
-              AND v.entry_version_id = m.entry_version_id
-             WHERE m.scope_id = :scope_id
-               AND m.memory_artifact_id IN :memory_artifact_ids
-               {tag_vector}
-             ORDER BY l2_distance(m.embedding, :query_vector){vector_approximate}
-             LIMIT :candidate_limit)
+            SELECT
+                f.memory_artifact_id AS fts_memory_artifact_id,
+                f.head_revision AS fts_head_revision,
+                f.entry_id AS fts_entry_id,
+                f.entry_version_id AS fts_entry_version_id,
+                f.text AS fts_text,
+                f.fts_score AS fts_score,
+                vc.memory_artifact_id AS vector_memory_artifact_id,
+                vc.head_revision AS vector_head_revision,
+                vc.entry_id AS vector_entry_id,
+                vc.entry_version_id AS vector_entry_version_id,
+                vc.text AS vector_text,
+                vc.distance AS distance
+            FROM (
+                SELECT h.scope_id,
+                       h.memory_artifact_id,
+                       h.head_revision,
+                       h.entry_id,
+                       h.entry_version_id,
+                       v.text,
+                       MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE) AS fts_score
+                FROM pc_memory_entry_heads AS h FORCE INDEX ({_OCEANBASE_FTS_INDEX_NAME})
+                JOIN pc_memory_entry_versions AS v
+                  ON v.scope_id = h.scope_id
+                 AND v.memory_artifact_id = h.memory_artifact_id
+                 AND v.entry_version_id = h.entry_version_id
+                WHERE h.scope_id = :scope_id
+                  AND h.memory_artifact_id IN :memory_artifact_ids
+                  AND MATCH(h.searchable_text) AGAINST(:analyzed_query IN NATURAL LANGUAGE MODE)
+                  {tag_fts}
+                ORDER BY fts_score DESC,
+                         h.memory_artifact_id,
+                         h.entry_id,
+                         h.entry_version_id
+                LIMIT :candidate_limit
+            ) AS f
+            RIGHT JOIN (
+                SELECT m.scope_id,
+                       m.memory_artifact_id,
+                       m.head_revision,
+                       m.entry_id,
+                       m.entry_version_id,
+                       v.text,
+                       l2_distance(m.embedding, :query_vector) AS distance
+                FROM pc_memory_vector_entries AS m FORCE INDEX ({_OCEANBASE_VECTOR_INDEX_NAME})
+                JOIN pc_memory_entry_versions AS v
+                  ON v.scope_id = m.scope_id
+                 AND v.memory_artifact_id = m.memory_artifact_id
+                 AND v.entry_version_id = m.entry_version_id
+                WHERE m.scope_id = :scope_id
+                  AND m.memory_artifact_id IN :memory_artifact_ids
+                  {tag_vector}
+                ORDER BY l2_distance(m.embedding, :query_vector){vector_approximate}
+                LIMIT :candidate_limit
+            ) AS vc
+              ON f.scope_id = vc.scope_id
+             AND f.memory_artifact_id = vc.memory_artifact_id
+             AND f.entry_id = vc.entry_id
+             AND f.entry_version_id = vc.entry_version_id
             """  # noqa: S608
         ).bindparams(
             bindparam("memory_artifact_ids", expanding=True),
@@ -285,8 +305,42 @@ class OceanBaseMemoryFTSIndex:
                 },
             )
         ).mappings()
-        fts_rows = [row for row in rows if row["channel"] == "fts"]
-        vector_rows = [row for row in rows if row["channel"] == "vector"]
+        fts_rows: list[dict[str, Any]] = []
+        vector_rows: list[dict[str, Any]] = []
+        for row in rows:
+            if row["fts_entry_id"] is not None:
+                fts_rows.append({
+                    "memory_artifact_id": row["fts_memory_artifact_id"],
+                    "entry_id": row["fts_entry_id"],
+                    "entry_version_id": row["fts_entry_version_id"],
+                    "text": row["fts_text"],
+                    "distance": None,
+                    "fts_score": float(row["fts_score"] or 0.0),
+                })
+            if row["vector_entry_id"] is not None:
+                vector_rows.append({
+                    "memory_artifact_id": row["vector_memory_artifact_id"],
+                    "entry_id": row["vector_entry_id"],
+                    "entry_version_id": row["vector_entry_version_id"],
+                    "text": row["vector_text"],
+                    "distance": float(row["distance"]),
+                })
+        fts_rows.sort(
+            key=lambda row: (
+                -row["fts_score"],
+                row["memory_artifact_id"],
+                row["entry_id"],
+                row["entry_version_id"],
+            )
+        )
+        vector_rows.sort(
+            key=lambda row: (
+                row["distance"],
+                row["memory_artifact_id"],
+                row["entry_id"],
+                row["entry_version_id"],
+            )
+        )
         return MemorySearchChannels(
             fts=memory_channel_hits(fts_rows, request.memories),
             vector=memory_channel_hits(vector_rows, request.memories),
