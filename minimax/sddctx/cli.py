@@ -16,6 +16,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,7 @@ from . import config
 from .agent import (
     MiniMaxClient,
     MiniMaxError,
+    MmxCliClient,
     build_prompt,
     extract_files,
     signature_mismatches,
@@ -169,7 +171,11 @@ def cmd_agent_apply(args: argparse.Namespace) -> int:
         if path.exists():
             references[relative] = path.read_text(encoding="utf-8")
 
-    client = MiniMaxClient(model=args.model)
+    client = (
+        MmxCliClient(model=args.model)
+        if args.protocol == "mmx-cli"
+        else MiniMaxClient(model=args.model)
+    )
     feedback: str | None = None
     attempts: list[dict[str, Any]] = []
     written: list[str] = []
@@ -177,7 +183,10 @@ def cmd_agent_apply(args: argparse.Namespace) -> int:
         prompt = build_prompt(args.task, markdown, targets, feedback, references)
         print(f"[MiniMax] 第 {attempt} 次请求，提示词 {len(prompt)} 字符 …")
         response = client.chat(prompt, system=None)
-        files = extract_files(response.content)
+        files = extract_files(
+            response.content,
+            fallback_path=next(iter(targets)) if len(targets) == 1 else None,
+        )
         allowed = set(targets)
         rejected = {path: content for path, content in files.items() if path not in allowed}
         files = {path: content for path, content in files.items() if path in allowed}
@@ -213,17 +222,26 @@ def cmd_agent_apply(args: argparse.Namespace) -> int:
             print(f"[lint] 发现未定义的名字：{missing}", file=sys.stderr)
         if mismatches:
             print(f"[lint] 发现签名不匹配的调用：{mismatches}", file=sys.stderr)
-        if args.test_command:
+        if args.test_command or args.test_argv:
             import subprocess
 
-            completed = subprocess.run(
-                args.test_command,
-                shell=True,
-                cwd=str(root),
-                capture_output=True,
-                text=True,
-            )
-            attempts[-1]["test_command"] = args.test_command
+            if args.test_argv:
+                # 列表形式：不经 shell，避免可执行文件路径含空格时的引号问题
+                completed = subprocess.run(
+                    list(args.test_argv),
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                )
+            else:
+                completed = subprocess.run(
+                    args.test_command,
+                    shell=True,
+                    cwd=str(root),
+                    capture_output=True,
+                    text=True,
+                )
+            attempts[-1]["test_command"] = args.test_command or " ".join(args.test_argv)
             attempts[-1]["test_exit_code"] = completed.returncode
             print(f"[test] 退出码 {completed.returncode}")
             if completed.returncode == 0:
@@ -338,8 +356,28 @@ def build_parser() -> argparse.ArgumentParser:
     agent_apply.add_argument("--target", action="append", required=True)
     agent_apply.add_argument("--reference", action="append", default=[])
     agent_apply.add_argument("--model", default=config.MINIMAX_MODEL)
+    agent_apply.add_argument(
+        "--protocol",
+        default=os.environ.get("MINIMAX_PROTOCOL", "minimax"),
+        choices=["minimax", "mmx-cli", "anthropic"],
+        help="MiniMax 调用方式：minimax=官方 HTTP API，mmx-cli=官方 mmx 命令行，anthropic=兼容接口",
+    )
     agent_apply.add_argument("--max-attempts", type=int, default=2)
-    agent_apply.add_argument("--test-command", default="")
+    agent_apply.add_argument(
+        "--test-command",
+        default="",
+        help=(
+            "用于验证模型产出的命令，在工程根目录下用 shell 执行。"
+            "若可执行文件路径包含空格，Windows 下需要自行加引号；"
+            "更推荐改用 --test-argv（列表形式，不经 shell）"
+        ),
+    )
+    agent_apply.add_argument(
+        "--test-argv",
+        action="append",
+        default=[],
+        help="验证命令的参数列表形式（不经 shell），可重复传入；与 --test-command 二选一",
+    )
     agent_apply.add_argument("--dry-run", action="store_true")
     agent_apply.add_argument("--record", default="")
     agent_apply.set_defaults(func=cmd_agent_apply)

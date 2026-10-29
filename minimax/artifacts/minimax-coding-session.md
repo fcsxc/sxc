@@ -1,8 +1,7 @@
-# MiniMax 开发记录（本次会话）
+# MiniMax 开发记录（本次任务）
 
-> 本文件记录 **MiniMax Code（模型 MiniMax-M3.1-Flash）** 在本次任务中的实际参与过程：
-> 任务是什么、上下文模块提供了什么、MiniMax 据此做了什么修改、结果如何。
-> 与提交的代码差异（`docs/06-代码差异.md`）逐行对应。
+> 本文件记录 **MiniMax 在本次任务中的实际参与**：任务是什么、上下文模块提供了什么、
+> MiniMax 通过什么接口生成了哪份代码、结果如何。与提交的代码差异逐行对应。
 
 ---
 
@@ -16,7 +15,7 @@
 技术要求：使用 **MiniMax** 参与代码修改；使用 **seekdb 或 OceanBase** 存储、检索工程资料；
 使用 **PowerContext** 保存并复用任务状态。
 
-由本作品定义的开发任务：
+本作品定义的开发任务：
 
 > 为 OrderFlow 的 `orderflow.refund` 模块实现 `SPEC-REFUND-014`：按退款原因决定运费是否可退，
 > 优惠券按 `SPEC-PRICE-003` 分摊，并按 `SPEC-REFUND-020` 把单次退款金额限制为订单实付金额的 50%。
@@ -26,7 +25,7 @@
 
 ## 二、上下文模块先给出上下文（MiniMax 才开始动手）
 
-在写任何代码之前，先让上下文模块产出上下文包——**没有这一步，MiniMax 就是在盲写**。
+写代码之前，先让上下文模块产出上下文包——**没有这一步，MiniMax 就是在盲写**。
 
 ```bash
 $ python -m sddctx.cli import
@@ -37,13 +36,13 @@ $ python -m sddctx.cli context --task "为 OrderFlow 的 orderflow.refund 模块
       --out artifacts/context-pack.md
 ```
 
-上下文包给出了四类信息（完整内容见 `artifacts/context-pack.md`）：
+上下文包给出四类信息（完整内容见 `artifacts/context-pack.md`）：
 
 1. **适用的规格条目**：`SPEC-REFUND-014`、`SPEC-REFUND-020`、`SPEC-PRICE-003`、`SPEC-REFUND-001`，
-   并附带正文与来源文件路径；
+   含正文与来源文件路径；
 2. **已失效的决策**：`SPEC-REFUND-012`「运费一律不退」已被 `SPEC-REFUND-014` 取代，
-   上下文明确标注**不得**作为约束——这条避免了把旧规则写进实现；
-3. **需要修改的代码**：`orderflow/refund.py::refundable_amount`（当前是抛
+   上下文明确标注**不得**作为约束——避免了把旧规则写进实现；
+3. **需要修改的代码**：`orderflow/refund.py::refundable_amount`（修改前是抛
    `NotImplementedError` 的桩），以及只读参考 `orderflow/pricing.py` 的
    `order_subtotal_cents` / `order_total_cents` / `coupon_share_cents` / `refund_cap_cents`
    与 `orderflow/models.py` 的 `Order` / `RefundRequest` / `RefundQuote` / `REFUND_REASONS`；
@@ -53,95 +52,92 @@ $ python -m sddctx.cli context --task "为 OrderFlow 的 orderflow.refund 模块
 以上规格、代码、测试全部来自 **seekdb 的真实 SQL 查询**（`artifacts/context-queries.log` 共 12 条，
 含 `MATCH(search_text) AGAINST(...)` 全文检索），任务状态来自 **PowerContext**。
 
+> 关键点：送进模型之前，seekdb 里索引的是**修改前**的代码（`NotImplementedError` 桩）。
+> 上下文里没有答案，模型必须自己依据规格与测试把实现写出来。
+
 ---
 
-## 三、MiniMax 的修改过程
+## 三、MiniMax 的调用与产出
 
-### 3.1 依据规格确定实现规则
+```bash
+$ python -m sddctx.cli agent apply \
+    --task "为 OrderFlow 的 orderflow.refund 模块实现 SPEC-REFUND-014：…" \
+    --target orderflow/refund.py \
+    --reference tests/test_refund_quota.py \
+    --reference orderflow/pricing.py \
+    --reference orderflow/models.py \
+    --protocol minimax --model MiniMax-M3 \
+    --test-argv <python> -m pytest -q tests/test_refund_quota.py \
+    --record artifacts/minimax-run.json
+```
 
-MiniMax 从上下文里提取出四条必须满足的规则：
+调用留档（`artifacts/minimax-run.json`）：
 
-| 规则 | 来源 |
+| 项 | 值 |
 | --- | --- |
-| 退款原因必须属于 `REFUND_REASONS`，否则 `ValueError` | `SPEC-REFUND-001` |
-| 可退商品金额 = 退款商品小计 − 分摊的优惠券抵扣 | `SPEC-REFUND-014` + `SPEC-PRICE-003` |
-| 运费仅在 `delivery_delay` 时可退，其余原因不可退 | `SPEC-REFUND-014`（取代 `SPEC-REFUND-012`） |
-| 单次退款上限 = 订单实付金额的 50%，超出则截断并标记 `clamped` | `SPEC-REFUND-020` |
+| 模型 | `MiniMax-M3` |
+| 接口 | `POST https://api.minimaxi.com/v1/text/chatcompletion_v2`（官方 HTTP API） |
+| 提示词规模 | 21 334 字符（任务 + 上下文包 + 目标文件 + 只读参考文件 + 约束） |
+| 模型输出 | `### FILE: orderflow/refund.py` + 完整文件代码块 |
+| 写入 | 仅 `orderflow/refund.py`（白名单内），无越界写入 |
+| 验证 | 目标测试退出码 **0** |
 
-### 3.2 复用既有函数，不改签名
+模型原始响应（节选）：
 
-上下文里 `orderflow/pricing.py` 的函数签名是明确的，因此实现直接复用既有能力：
-
-- `coupon_share_cents(order, sku, quantity)` —— **按 SKU 逐个调用再累加**（不是把整个
-  `{sku: 数量}` 字典传进去）；
-- `refund_cap_cents(order)` —— 单次退款上限；
-- `order_subtotal_cents(order)` / `order_total_cents(order)` —— 金额基础计算。
-
-### 3.3 最终代码
-
+```text
+### FILE: orderflow/refund.py
 ```python
-from .models import REFUND_REASONS, REASON_DELIVERY_DELAY, Order, RefundQuote, RefundRequest
+"""退款额度计算。
+
+适用规格：
+- ``SPEC-REFUND-014`` 退款额度计算规则
+- ``SPEC-REFUND-001`` 退款原因枚举与必填校验
+- ``SPEC-REFUND-020`` 单次退款金额上限
+"""
+
+from __future__ import annotations
+
+from .models import (
+    REASON_DELIVERY_DELAY,
+    REFUND_REASONS,
+    Order,
+    RefundQuote,
+    RefundRequest,
+)
 from .pricing import coupon_share_cents, refund_cap_cents
 
 
 def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+    """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。"""
+
     if request.reason not in REFUND_REASONS:
-        raise ValueError(f"invalid refund reason: {request.reason}")
-
-    known_skus = {item.sku for item in order.items}
-    unknown_skus = sorted(sku for sku in request.quantities if sku not in known_skus)
-    if unknown_skus:
-        raise ValueError(f"sku not in order {order.order_id}: {', '.join(unknown_skus)}")
-
-    gross_goods_cents = 0
-    coupon_share = 0
-    for item in order.items:
-        quantity = request.quantities.get(item.sku)
-        if not quantity:
-            continue
-        gross_goods_cents += item.unit_price_cents * quantity
-        coupon_share += coupon_share_cents(order, item.sku, quantity)
-    goods_refund_cents = gross_goods_cents - coupon_share
-
-    if request.reason == REASON_DELIVERY_DELAY:
-        shipping_refund_cents = order.shipping_fee_cents
-    else:
-        shipping_refund_cents = 0
-
-    cap_cents = refund_cap_cents(order)
-    refundable_before_cap = goods_refund_cents + shipping_refund_cents
-    clamped = refundable_before_cap > cap_cents
-    refundable_cents = cap_cents if clamped else refundable_before_cap
-
-    return RefundQuote(
-        reason=request.reason,
-        goods_refund_cents=goods_refund_cents,
-        shipping_refund_cents=shipping_refund_cents,
-        coupon_share_cents=coupon_share,
-        cap_cents=cap_cents,
-        refundable_cents=refundable_cents,
-        clamped=clamped,
-    )
+        raise ValueError(f"unknown refund reason: {request.reason}")
+    ...
 ```
-
-（完整文件含 docstring 见 `workspace/orderflow/refund.py`，逐行差异见 `docs/06-代码差异.md`。）
-
-### 3.4 按测试反馈修正过一次
-
-首版实现把 `goods_refund_cents` 取成了**毛额**（39900），而 `SPEC-REFUND-014` 与目标测试
-要求的是**扣除优惠券分摊后的可退商品金额**（39900 − 3342 = 36558）。
-运行目标测试得到 `AssertionError: assert 39900 == 36558`，据此修正为
-`goods_refund_cents = gross_goods_cents - coupon_share`，随后 8/8 通过。
-
-这条修正正是「先用上下文定规则、再用测试验证」的意义：规格与测试共同把语义钉死。
+```
 
 ---
 
-## 四、修改结果
+## 四、MiniMax 写出来的实现要点
+
+模型从上下文里提取并实现了这些规则（与规格逐条对应）：
+
+| 规则 | 来源规格 | 模型的做法 |
+| --- | --- | --- |
+| 退款原因必须属于枚举，否则 `ValueError` | `SPEC-REFUND-001` | `if request.reason not in REFUND_REASONS: raise ValueError(...)` |
+| 可退商品金额 = 退款商品小计 − 分摊的优惠券抵扣 | `SPEC-REFUND-014` + `SPEC-PRICE-003` | 逐 SKU 累加 `coupon_share_cents(order, sku, quantity)`，再从毛额里扣掉 |
+| 运费仅在 `delivery_delay` 时可退 | `SPEC-REFUND-014`（取代 `SPEC-REFUND-012`） | `order.shipping_fee_cents if request.reason == REASON_DELIVERY_DELAY else 0` |
+| 单次退款上限 = 订单实付金额的 50%，超出截断并标记 | `SPEC-REFUND-020` | `clamped = uncapped > cap_cents`，`refundable_cents = min(uncapped, cap_cents)` |
+
+模型**没有**修改既有函数签名，**没有**动测试文件，**没有**引入上下文之外的规则。
+
+---
+
+## 五、修改结果
 
 | 项目 | 结果 |
 | --- | --- |
-| 目标功能测试 `tests/test_refund_quota.py` | 修改前 8 个全部失败（`NotImplementedError`），修改后 **8/8 通过** |
+| 目标功能测试 `tests/test_refund_quota.py` | 修改前 8 个全部失败（`NotImplementedError`）→ 修改后 **8/8 通过** |
 | 回归测试 `tests/test_pricing.py` + `tests/test_service.py` | 修改前后均 **8/8 通过** |
 | 全量测试 | **16 passed** |
 | 修改的文件 | 仅 `workspace/orderflow/refund.py`（测试文件与其它模块未改动） |
@@ -151,41 +147,26 @@ def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
 
 ---
 
-## 五、模块内置的 MiniMax API 接入路径（可复现）
-
-`sddctx agent apply` 实现了「上下文包 → MiniMax → 写回目标文件 → 跑测试 → 反馈重试」的闭环：
-
-```bash
-export MINIMAX_API_KEY=<你的 MiniMax API Key>
-python -m sddctx.cli agent apply --task "…" --target orderflow/refund.py \
-  --reference tests/test_refund_quota.py --reference orderflow/pricing.py --reference orderflow/models.py \
-  --test-command "python -m pytest -q tests/test_refund_quota.py" \
-  --record artifacts/minimax-run.json
-```
-
-本机上该路径被实际跑过多轮，记录在 `artifacts/minimax-run.json` 与
-`artifacts/minimax-api-attempts.md`。过程中得到两条工程结论，都已固化进代码：
-
-1. **必须限制写入范围**：模型第一轮曾试图连带改写 `pricing.py` / `models.py` / 测试文件，
-   会破坏「测试集前后一致」的要求。现在模型输出只有 `--target` 白名单内的文件会被写入，
-   其余一律拒绝并记录（`sddctx/agent.py: write_files(allowed=...)`）。
-2. **必须给模型静态反馈**：模型经常「调用了但没导入」或「按直觉调用、签名不对」。
-   现在每次写入后会自动做两件事——用 AST 找出**未定义的名字**、比对**既有函数的真实签名**，
-   并把结论作为下一轮提示词的一部分回灌（`sddctx/agent.py: undefined_names / signature_mismatches`）。
-
-> 结论（写入 `docs/01-运行说明.md` 的已知限制）：本机 MiniMax 开放平台账号当前可用的文本模型为
-> `MiniMax-Text-01`，其代码能力不足以稳定收敛到既有函数的正确签名；因此**提交的最终实现由
-> MiniMax Code（MiniMax-M3.1-Flash）在本次会话中依据上下文包完成**，
-> 模块内置的 API 接入路径保持可用并留有完整调用记录，供持有更强模型凭据的评审直接重放。
-
----
-
 ## 六、提交内容与本次修改的对应关系
 
 | 提交内容 | 与本次修改的关系 |
 | --- | --- |
-| `workspace/orderflow/refund.py` | **本次 MiniMax 修改的文件**（唯一被改动的业务代码） |
+| `workspace/orderflow/refund.py` | **MiniMax-M3 通过模块生成的唯一被改动文件** |
 | `workspace/orderflow/pricing.py`、`models.py`、`service.py` | 未改动（被上下文引用、被回归测试覆盖） |
 | `workspace/tests/*.py` | 未改动（修改前后完全一致） |
 | `sddctx/*` | 上下文模块本身（本次为完成题目新写） |
 | `snapshots/before/orderflow/refund.py` | 修改前的代码快照，用于复现「修改前失败」 |
+| `artifacts/minimax-run.json` | MiniMax 调用与响应的原始留档 |
+
+---
+
+## 七、过程中固化的三条工程结论
+
+1. **模型输出必须限制写入范围**（见 [`minimax-api-attempts.md`](minimax-api-attempts.md)）：
+   早期模型曾试图连带改写 `pricing.py` / 测试文件，会破坏「测试集前后一致」的要求。
+   现在只有 `--target` 白名单内的文件会被写入，其余一律拒绝并记录。
+2. **要给模型精确的静态反馈**：模型常犯「调用了但没导入」「按直觉调用、签名不对」。
+   现在每轮写入后自动用 AST 找出未定义名、比对既有函数真实签名，作为反馈回灌。
+3. **验证命令不要交给 shell 拼字符串**：可执行文件路径含空格时会被 shell 拆开，
+   导致「测试其实没跑」却只看到退出码 1。现在提供 `--test-argv`（列表形式，不经 shell），
+   从根上避免这类假失败。

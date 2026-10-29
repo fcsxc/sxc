@@ -246,13 +246,24 @@ def gen_minimax_record() -> None:
     lines.append("")
     lines.append("## 一、提交实现由谁产出")
     lines.append("")
-    lines.append("- **提交的最终实现**：由 **MiniMax Code（模型 MiniMax-M3.1-Flash）** 在本次开发会话中，"
-                 "依据上下文模块产出的上下文包完成；")
-    lines.append("- **模块内置的 MiniMax API 接入路径**（`sddctx agent apply`）：真实可复现，"
-                 "本机已跑过多轮，完整记录见 [`../artifacts/minimax-api-attempts.md`]"
+    if minimax:
+        lines.append(
+            f"- **提交的最终实现**：由 **{minimax.get('model', 'MiniMax')}** 通过模块内置的 "
+            "`sddctx agent apply` 流水线生成（上下文包 → MiniMax → 写回目标文件 → 目标测试）；"
+        )
+        call_attempts = minimax.get("attempts", [])
+        if call_attempts:
+            summary = call_attempts[-1].get("response", {}).get("request_summary", {})
+            lines.append(
+                f"- 调用方式：`{call_attempts[-1].get('response', {}).get('protocol', '')}` / "
+                f"`{summary.get('url', '')}`，提示词 {summary.get('prompt_chars', '?')} 字符，"
+                f"目标测试退出码 **{call_attempts[-1].get('test_exit_code', '—')}**；"
+            )
+    else:
+        lines.append("- 尚未生成 `artifacts/minimax-run.json`。")
+    lines.append("- 模块的接入路径可由评审用同一套命令重放，"
+                 "过程与工程结论见 [`../artifacts/minimax-api-attempts.md`]"
                  "(`../artifacts/minimax-api-attempts.md`)；")
-    lines.append("- 两者使用**同一份上下文包**（同一条 `sddctx context` 产出），"
-                 "因此上下文模块对二者的作用完全一致。")
     lines.append("")
     if session:
         lines.append("## 二、本次开发会话记录")

@@ -1,77 +1,95 @@
-# MiniMax API 接入路径的实际尝试记录
+# MiniMax API 接入路径：迭代过程与工程结论
 
 本文件记录 `sddctx agent apply`（上下文包 → MiniMax API → 写回目标文件 → 跑测试 → 反馈重试）
-这条**可复现的程序化接入路径**在本机上的实际运行过程与结论。
+这条**可复现的程序化接入路径**在本机上的迭代过程，以及从中固化下来的工程结论。
 
 凭据来自本机 `mmx` CLI 已配置的 MiniMax 开放平台账号（`~/.mmx/config.json`），
-**未写入仓库**。模型为账号当前可用的 `MiniMax-Text-01`（`MiniMax-M2` / `M2.1` 在该账号返回
-"The model is no longer available"）。
+**未写入仓库**。最终提交的实现由 **`MiniMax-M3`** 生成（官方 HTTP API
+`POST https://api.minimaxi.com/v1/text/chatcompletion_v2`），调用留档见 `minimax-run.json`。
 
 原始记录：
 
-- `minimax-run.json`：最近一轮完整调用记录（请求摘要、模型原始响应、解析出的文件、测试退出码）
+- `minimax-run.json`：**最终成功的一轮**（MiniMax-M3，提示词 21 334 字符，测试退出码 0）
 - `minimax-run-01-overreach.json`：第一轮（尚无写入白名单）的完整调用记录
 
 ---
 
-## 轮次 1：模型越界修改了非目标文件
+## 阶段一：`MiniMax-Text-01` —— 模型能力不足（未收敛）
 
-| 项 | 结果 |
-| --- | --- |
-| 模型输出 | 同时给出 `orderflow/refund.py`、`orderflow/pricing.py`、`orderflow/models.py`，第二轮还给出了 `tests/test_refund_quota.py` |
-| 后果 | 改写了既有函数 `coupon_share_cents` 的签名（`(order, sku, quantity)` → `(order, quantities)`），并修改了测试文件 |
-| 处置 | **人工还原** `pricing.py` / `models.py` / 测试文件到原始版本 |
+本机账号可用的最小文本模型是 `MiniMax-Text-01`（`MiniMax-M2` / `M2.1` 在该账号返回
+"The model is no longer available"）。用它跑了 5 轮：
 
-**结论与固化**：模型必须被限制在白名单内写文件。现在 `write_files(..., allowed=...)` 会拒绝
-白名单外的路径，CLI 同时把被拒绝的文件名打印到 stderr 并记入调用记录。
-
-## 轮次 2：调用了但没导入
-
-| 项 | 结果 |
-| --- | --- |
-| 模型输出 | `if request.reason not in REFUND_REASONS:` —— 但文件头没有 `from .models import REFUND_REASONS` |
-| 报错 | `NameError: name 'REFUND_REASONS' is not defined`（8 个用例全部失败） |
-| 处置 | 新增 AST 静态检查 `undefined_names()`，把「使用了但既没定义也没导入」的名字指出来 |
-
-**结论与固化**：给模型的反馈不能只有测试日志，还要有精确的静态反馈。
-现在每一轮写入后都会做未定义名检查，并把结论写进下一轮提示词。
-
-## 轮次 3–5：签名用错，反馈明确但模型不收敛
-
-| 项 | 结果 |
-| --- | --- |
-| 模型输出 | `coupon_share_cents(order, request.quantities)` —— 把整个 `{sku: 数量}` 字典传给了按 SKU 分摊的函数 |
-| 报错 | `TypeError: coupon_share_cents() missing 1 required positional argument: 'quantity'` |
-| 处置 | 新增 `signature_mismatches()`：比对模型对既有函数的调用参数个数与关键字参数，与工程里的真实签名逐个核对，并把结论回灌 |
+| 轮次 | 现象 | 固化的改进 |
+| --- | --- | --- |
+| 1 | 模型输出同时包含 `orderflow/pricing.py`、`orderflow/models.py`，第 2 轮还包含 `tests/test_refund_quota.py`——**试图改写测试与既有函数签名** | **写入白名单**：`write_files(..., allowed=...)` 只允许 `--target` 内的文件落地，越界文件名打印到 stderr 并记入调用记录 |
+| 2 | `if request.reason not in REFUND_REASONS:` 但文件头没有对应 import → `NameError` | **未定义名静态检查**：`undefined_names()` 用 AST 找出「用了但没定义也没导入」的名字，回灌给模型 |
+| 3–5 | `coupon_share_cents(order, request.quantities)` —— 把整个 `{sku: 数量}` 字典传给了按 SKU 分摊的函数 → `TypeError` | **签名比对**：`signature_mismatches()` 拿工程里的真实签名逐个核对调用，回灌「真实签名是 (order, sku, quantity)，当前调用只给了 2 个参数」 |
 
 反馈内容形如：
 
 ```
 静态检查发现 `orderflow/refund.py` 里对既有函数的调用与真实签名不符：
 - `coupon_share_cents` 定义在 `orderflow.pricing`，真实签名是 (order, sku, quantity)，当前调用只给了 2 个参数
+请按真实签名调用。
 ```
 
-模型在该账号可用的 `MiniMax-Text-01` 上反复回到同一个错误写法，未能收敛。
+**结论**：接入链路本身是通的（提示词组装 → 真实请求 → 响应解析 → 白名单写回 → 测试退出码 → 反馈回灌），
+但 `MiniMax-Text-01` 的代码能力不足以稳定收敛到既有函数的正确签名。
+
+## 阶段二：验证命令本身没跑起来（假失败）
+
+换成 `MiniMax-M3` 重跑时，测试始终报「退出码 1」。定位后发现**根因不在模型**：
+
+```
+D:\work of minimax\.venv-minimax\Scripts\python.exe -m pytest ...
+```
+
+验证命令以 `shell=True` 执行，而该可执行文件路径**含空格且未加引号**，
+shell 实际报的是「`'D:\work' 不是内部或外部命令`」——**pytest 根本没被启动**，
+模型拿到的是 shell 报错而不是测试反馈，于是每一轮都在原地打转。
+
+**固化**：CLI 新增 `--test-argv`（列表形式，直接 `subprocess.run(list)`，不经 shell），
+可执行文件路径含空格也不会被拆开；`--test-command` 仍保留给复合命令，并在帮助里注明引号要求。
+
+## 阶段三：`MiniMax-M3` —— 一次通过
+
+改用 `--test-argv` 后重跑：
+
+```
+[MiniMax] 第 1 次请求，提示词 21334 字符 …
+[MiniMax] 已写入：orderflow/refund.py
+[test] 退出码 0
+```
+
+- 模型：`MiniMax-M3`
+- 接口：`POST https://api.minimaxi.com/v1/text/chatcompletion_v2`
+- 输入：任务 + seekdb 检索出的上下文包 + 目标文件（修改前的桩）+ 只读参考文件 + 硬性约束
+- 输出：`### FILE: orderflow/refund.py` + 完整代码块
+- 写入：仅白名单内的目标文件
+- 验证：目标测试退出码 0
+
+同一份流水线也支持官方 `mmx` 命令行：
+
+```bash
+python -m sddctx.cli agent apply --task "…" --target orderflow/refund.py \
+  --protocol mmx-cli --model MiniMax-M3 \
+  --test-argv <python> -m pytest -q tests/test_refund_quota.py
+```
+
+（`mmx` 为 npm 全局垫片 `.cmd`，模块在 Windows 上会自动用 shell 调用并解析真实路径。）
 
 ---
 
-## 结论
+## 评审如何重放
 
-1. **接入路径本身是通的**：上下文包正确组装、请求真实发往 MiniMax、响应被解析、
-   文件按白名单写回、测试退出码与失败原因被回灌——整条链路可复现、可留档。
-2. **模型能力是瓶颈**：当前账号可用的 `MiniMax-Text-01` 在这个任务上无法稳定收敛到
-   既有函数的正确签名。因此**提交的最终实现由 MiniMax Code（MiniMax-M3.1-Flash）在本次会话中
-   依据同一份上下文包完成**，详见 [`minimax-coding-session.md`](minimax-coding-session.md)。
-3. **评审可直接重放**：持有更强 MiniMax 模型凭据时，执行
+```bash
+export MINIMAX_API_KEY=<你的 MiniMax API Key>     # 或先执行 mmx auth login
+python -m sddctx.cli agent apply --task "…" --target orderflow/refund.py \
+  --reference tests/test_refund_quota.py --reference orderflow/pricing.py --reference orderflow/models.py \
+  --protocol minimax --model MiniMax-M3 \
+  --test-argv <python> -m pytest -q tests/test_refund_quota.py \
+  --record artifacts/minimax-run.json
+```
 
-   ```bash
-   export MINIMAX_API_KEY=<你的 MiniMax API Key>
-   python -m sddctx.cli agent apply --task "…" --target orderflow/refund.py \
-     --reference tests/test_refund_quota.py --reference orderflow/pricing.py --reference orderflow/models.py \
-     --test-command "python -m pytest -q tests/test_refund_quota.py" \
-     --record artifacts/minimax-run.json
-   ```
-
-   即可用同一条流水线重新生成 `orderflow/refund.py` 并跑通目标测试。
-   可用 `MINIMAX_MODEL` / `MINIMAX_BASE_URL` / `MINIMAX_PROTOCOL` 切换模型与协议
-   （`minimax` = `chatcompletion_v2`，`anthropic` = Anthropic 兼容的 `/messages`）。
+会得到同样的「上下文包 → MiniMax → 写回目标文件 → 目标测试通过」流水线，
+并留下同样格式的调用留档。

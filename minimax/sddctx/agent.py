@@ -34,6 +34,22 @@ class MiniMaxError(RuntimeError):
     """MiniMax 调用失败。"""
 
 
+def _key_from_mmx_config() -> str:
+    """复用官方 mmx CLI 已配置的凭据（``~/.mmx/config.json``）。"""
+
+    try:
+        from pathlib import Path
+
+        path = Path.home() / ".mmx" / "config.json"
+        if not path.exists():
+            return ""
+        data = json.loads(path.read_text(encoding="utf-8"))
+        key = data.get("api_key")
+        return key if isinstance(key, str) else ""
+    except (OSError, json.JSONDecodeError):
+        return ""
+
+
 @dataclass
 class MiniMaxResponse:
     """一次 MiniMax 调用的结果（用于留档）。"""
@@ -65,7 +81,7 @@ class MiniMaxClient:
         protocol: str | None = None,
         timeout: float | None = None,
     ) -> None:
-        self.api_key = api_key or os.environ.get(config.MINIMAX_API_KEY_ENV, "")
+        self.api_key = api_key or os.environ.get(config.MINIMAX_API_KEY_ENV, "") or _key_from_mmx_config()
         self.base_url = (base_url or config.MINIMAX_BASE_URL).rstrip("/")
         self.model = model or config.MINIMAX_MODEL
         self.protocol = (protocol or os.environ.get("MINIMAX_PROTOCOL", "minimax")).lower()
@@ -73,6 +89,7 @@ class MiniMaxClient:
         if not self.api_key:
             raise MiniMaxError(
                 f"未找到 MiniMax 凭据：请设置环境变量 {config.MINIMAX_API_KEY_ENV}"
+                "（或先执行 mmx auth login，模块会复用 ~/.mmx/config.json 中的 key）"
             )
 
     # ------------------------------------------------------------------ 调用
@@ -162,6 +179,109 @@ class MiniMaxClient:
             return json.loads(body)
         except json.JSONDecodeError as exc:
             raise MiniMaxError(f"MiniMax 返回非 JSON 内容：{body[:200]}") from exc
+
+
+class MmxCliClient:
+    """通过官方 ``mmx`` CLI 调用 MiniMax。
+
+    命令形态（与大赛官方做法一致）::
+
+        mmx text chat --messages-file <file> --model <model> \\
+            --max-tokens 4096 --temperature 0.2 --non-interactive --quiet --output text
+
+    凭据由 mmx CLI 自己管理（``~/.mmx/config.json``），不经过本模块。
+    """
+
+    def __init__(
+        self,
+        model: str | None = None,
+        binary: str | None = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.2,
+        timeout: float | None = None,
+    ) -> None:
+        self.model = model or config.MINIMAX_MODEL
+        self.binary = binary or os.environ.get("MMX_BIN", "mmx")
+        self.max_tokens = max_tokens
+        self.temperature = temperature
+        self.timeout = timeout or config.MINIMAX_TIMEOUT
+
+    def chat(self, prompt: str, system: str | None = None) -> MiniMaxResponse:
+        """调用 mmx CLI 生成文本。"""
+
+        import subprocess
+        import tempfile
+
+        messages: list[dict[str, str]] = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        with tempfile.NamedTemporaryFile(
+            "w", suffix=".json", encoding="utf-8", delete=False
+        ) as handle:
+            json.dump(messages, handle, ensure_ascii=False)
+            messages_file = handle.name
+        try:
+            import shutil
+
+            resolved = shutil.which(self.binary) or self.binary
+            command = [
+                resolved,
+                "text",
+                "chat",
+                "--messages-file",
+                messages_file,
+                "--model",
+                self.model,
+                "--max-tokens",
+                str(self.max_tokens),
+                "--temperature",
+                str(self.temperature),
+                "--non-interactive",
+                "--quiet",
+                "--output",
+                "text",
+            ]
+            # Windows 上的 npm 全局命令是 .cmd 垫片，必须交给 shell 执行
+            use_shell = os.name == "nt" and resolved.lower().endswith((".cmd", ".bat"))
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=self.timeout,
+                shell=use_shell,
+            )
+        except FileNotFoundError as exc:
+            raise MiniMaxError(
+                f"找不到 {self.binary} 命令；请先安装官方 CLI：npm i -g @minimax/mmx-cli"
+            ) from exc
+        except subprocess.TimeoutExpired as exc:
+            raise MiniMaxError(f"{self.binary} 调用超时（{self.timeout}s）") from exc
+        finally:
+            try:
+                Path(messages_file).unlink()
+            except OSError:  # pragma: no cover
+                pass
+
+        if completed.returncode != 0:
+            raise MiniMaxError(
+                f"{self.binary} 返回 {completed.returncode}: {(completed.stderr or '')[:400]}"
+            )
+        content = completed.stdout or ""
+        return MiniMaxResponse(
+            model=self.model,
+            protocol="mmx-cli",
+            content=content.strip(),
+            usage={},
+            request_summary={
+                "command": " ".join(command[:6]) + " ...",
+                "model": self.model,
+                "prompt_chars": len(prompt),
+                "system_chars": len(system or ""),
+                "messages": len(messages),
+            },
+        )
 
 
 # ---------------------------------------------------------------------- 提示词
@@ -412,8 +532,12 @@ def build_prompt(
     return "\n".join(parts)
 
 
-def extract_files(text: str) -> dict[str, str]:
-    """从模型输出里解析出文件内容。"""
+def extract_files(text: str, fallback_path: str | None = None) -> dict[str, str]:
+    """从模型输出里解析出文件内容。
+
+    优先识别 ``### FILE: <路径>`` + 代码块的格式；若模型只给了一个代码块，
+    且调用方声明了唯一的目标文件，则把该代码块视为目标文件的新内容。
+    """
 
     files: dict[str, str] = {}
     for match in FILE_BLOCK_RE.finditer(text):
@@ -422,6 +546,10 @@ def extract_files(text: str) -> dict[str, str]:
         code = CODE_BLOCK_RE.search(body)
         content = code.group("body") if code else body
         files[path] = content.strip("\n") + "\n"
+    if not files and fallback_path:
+        blocks = CODE_BLOCK_RE.findall(text)
+        if len(blocks) == 1:
+            files[fallback_path] = blocks[0].strip("\n") + "\n"
     return files
 
 

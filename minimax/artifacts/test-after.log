@@ -11,5 +11,5 @@ $ python -m pytest -q tests/test_pricing.py tests/test_service.py
 # 退出码：0
 
 ........                                                                 [100%]
-8 passed in 0.02s
+8 passed in 0.01s
 

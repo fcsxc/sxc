@@ -1,7 +1,7 @@
 # 开发上下文包
 
 - 任务：为 OrderFlow 的 orderflow.refund 模块实现 SPEC-REFUND-014：按退款原因决定运费是否可退，优惠券按 SPEC-PRICE-003 分摊，并按 SPEC-REFUND-020 把单次退款金额限制为订单实付金额的 50%。需要实现的符号是 orderflow.refund.refundable_amount。
-- 生成时间：2026-10-30T02:29:03
+- 生成时间：2026-10-30T02:45:03
 - 规格与代码来源：seekdb 嵌入式实例
 - 焦点模块：orderflow.refund, orderflow.pricing, orderflow.service
 
@@ -84,72 +84,54 @@
 
 ## 2. 需要修改的代码文件与符号
 
-### `orderflow/refund.py` :: `refundable_amount`（function，第 23-77 行，模块 `orderflow.refund`，相关度：27.5）
+### `orderflow/refund.py` :: `refundable_amount`（function，第 21-67 行，模块 `orderflow.refund`，相关度：19.5）
 
 按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
 
-Args:
-    order: 订单快照。
-    request: 退款申请，含退款原因与各 SKU 的退款数量。
-
-Returns:
-    可退额度明细（商品 / 运费 / 优惠券分摊 / 上限 / 是否被截断）。
-
-Raises:
-    ValueError: 退款原因不在枚举内，或退款数量里出现订单中不存在的 SKU。
-
 ```python
 def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
-    """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。"""
 
-    Args:
-        order: 订单快照。
-        request: 退款申请，含退款原因与各 SKU 的退款数量。
-
-    Returns:
-        可退额度明细（商品 / 运费 / 优惠券分摊 / 上限 / 是否被截断）。
-
-    Raises:
-        ValueError: 退款原因不在枚举内，或退款数量里出现订单中不存在的 SKU。
-    """
-
-    # SPEC-REFUND-001：退款原因必填且必须属于枚举
     if request.reason not in REFUND_REASONS:
-        raise ValueError(f"invalid refund reason: {request.reason}")
+        raise ValueError(f"unknown refund reason: {request.reason}")
 
-    known_skus = {item.sku for item in order.items}
-    unknown_skus = sorted(sku for sku in request.quantities if sku not in known_skus)
-    if unknown_skus:
-        raise ValueError(f"sku not in order {order.order_id}: {', '.join(unknown_skus)}")
+    goods_subtotal_cents = 0
+    coupon_share_total_cents = 0
 
-    # SPEC-REFUND-014：可退商品金额 = 退款商品小计 − 分摊到这些商品的优惠券抵扣
-    gross_goods_cents = 0
-    coupon_share = 0
-    for item in order.items:
-        quantity = request.quantities.get(item.sku)
-        if not quantity:
-            continue
-        gross_goods_cents += item.unit_price_cents * quantity
-        coupon_share += coupon_share_cents(order, item.sku, quantity)
-    goods_refund_cents = gross_goods_cents - coupon_share
+    for sku, quantity in request.quantities.items():
+        matching_items = [item for item in order.items if item.sku == sku]
+        if not matching_items:
+            raise ValueError(f"sku {sku!r} does not belong to order {order.order_id}")
+        if quantity < 0:
+            raise ValueError(f"refund quantity cannot be negative for sku {sku!r}")
 
-    # SPEC-REFUND-014：运费仅在配送延迟时可退
-    if request.reason == REASON_DELIVERY_DELAY:
-        shipping_refund_cents = order.shipping_fee_cents
-    else:
-        shipping_refund_cents = 0
+        ordered_quantity = sum(item.quantity for item in matching_items)
+        if quantity > ordered_quantity:
+            raise ValueError(f"refund quantity exceeds ordered quantity for sku {sku!r}")
 
-    # SPEC-REFUND-020：单次退款金额不得超过订单实付金额的 50%
-    cap_cents = refund_cap_cents(order)
+        remaining = quantity
+        for item in matching_items:
+            refunded_quantity = min(remaining, item.quantity)
+            goods_subtotal_cents += item.unit_price_cents * refunded_quantity
+            remaining -= refunded_quantity
+
+        coupon_share_total_cents += coupon_share_cents(order, sku, quantity)
+
+    goods_refund_cents = goods_subtotal_cents - coupon_share_total_cents
+    shipping_refund_cents = (
+        order.shipping_fee_cents if request.reason == REASON_DELIVERY_DELAY else 0
+    )
+
     refundable_before_cap = goods_refund_cents + shipping_refund_cents
+    cap_cents = refund_cap_cents(order)
     clamped = refundable_before_cap > cap_cents
-    refundable_cents = cap_cents if clamped else refundable_before_cap
+    refundable_cents = min(refundable_before_cap, cap_cents)
 
     return RefundQuote(
         reason=request.reason,
         goods_refund_cents=goods_refund_cents,
         shipping_refund_cents=shipping_refund_cents,
-        coupon_share_cents=coupon_share,
+        coupon_share_cents=coupon_share_total_cents,
         cap_cents=cap_cents,
         refundable_cents=refundable_cents,
         clamped=clamped,

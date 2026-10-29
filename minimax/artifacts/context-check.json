@@ -52,84 +52,84 @@
     {
       "sql": "CREATE DATABASE IF NOT EXISTS `sdd`",
       "rows": 0,
-      "duration_ms": 1.265,
+      "duration_ms": 1.332,
       "ok": true,
       "error": ""
     },
     {
       "sql": "\n        CREATE TABLE IF NOT EXISTS spec_item (\n            spec_id VARCHAR(128) NOT NULL,\n            title VARCHAR(512) NOT NULL,\n            status VARCHAR(32) NOT NULL,\n            applies_to VARCHAR(1024) NOT NULL,\n            supersedes VARCHAR(512) NOT NULL,\n            tags VARCHAR(512) NOT NULL,\n            source_path VARCHAR(512) NOT NULL,\n            revision INT NOT NULL,\n            body MEDIUMTEXT NOT NULL,\n            search_text MEDIUMTEXT NOT NULL,\n            PRIMARY KEY (spec_id),\n            FULLTEXT INDEX idx_spec_search (search_text) WITH PARSER ik\n        ) ORGANIZATION = HEAP\n        ",
       "rows": 0,
-      "duration_ms": 21.474,
+      "duration_ms": 21.645,
       "ok": true,
       "error": ""
     },
     {
       "sql": "\n        CREATE TABLE IF NOT EXISTS code_symbol (\n            symbol_id VARCHAR(512) NOT NULL,\n            file_path VARCHAR(512) NOT NULL,\n            module_path VARCHAR(256) NOT NULL,\n            name VARCHAR(256) NOT NULL,\n            kind VARCHAR(32) NOT NULL,\n            signature VARCHAR(1024) NOT NULL,\n            docstring MEDIUMTEXT NOT NULL,\n            line_start INT NOT NULL,\n            line_end INT NOT NULL,\n            source MEDIUMTEXT NOT NULL,\n            search_text MEDIUMTEXT NOT NULL,\n            PRIMARY KEY (symbol_id)\n        ) ORGANIZATION = HEAP\n        ",
       "rows": 0,
-      "duration_ms": 2.598,
+      "duration_ms": 2.006,
       "ok": true,
       "error": ""
     },
     {
       "sql": "\n        CREATE TABLE IF NOT EXISTS test_case (\n            test_id VARCHAR(512) NOT NULL,\n            file_path VARCHAR(512) NOT NULL,\n            name VARCHAR(256) NOT NULL,\n            module_path VARCHAR(256) NOT NULL,\n            docstring MEDIUMTEXT NOT NULL,\n            asserts MEDIUMTEXT NOT NULL,\n            target_modules VARCHAR(1024) NOT NULL,\n            search_text MEDIUMTEXT NOT NULL,\n            PRIMARY KEY (test_id)\n        ) ORGANIZATION = HEAP\n        ",
       "rows": 0,
-      "duration_ms": 1.785,
+      "duration_ms": 1.672,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT DISTINCT module_path FROM code_symbol ORDER BY module_path",
       "rows": 8,
-      "duration_ms": 29.153,
+      "duration_ms": 28.947,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT spec_id, title, status, applies_to, supersedes, tags, source_path, revision, body, MATCH(search_text) AGAINST ('为 OrderFlow 的 orderflow.refund 模块实现 SPEC-REFUND-014：按退款原因决定运费是否可退，优惠券按 SPEC-PRICE-003 分摊，并按 SPEC-REFUND-020 把单次退款金额限制为订单实付金额的 50%。需要实现的符号是 orderflow.refund.refundable_amount。') AS fts_score FROM spec_item WHERE status = 'active'   AND MATCH(search_text) AGAINST ('为 OrderFlow 的 orderflow.refund 模块实现 SPEC-REFUND-014：按退款原因决定运费是否可退，优惠券按 SPEC-PRICE-003 分摊，并按 SPEC-REFUND-020 把单次退款金额限制为订单实付金额的 50%。需要实现的符号是 orderflow.refund.refundable_amount。') ORDER BY fts_score DESC LIMIT 40",
       "rows": 7,
-      "duration_ms": 97.632,
+      "duration_ms": 110.854,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT spec_id, title, status, applies_to, supersedes, tags, source_path, revision, body FROM spec_item WHERE status = 'active' AND (search_text LIKE '%orderflow%' OR search_text LIKE '%orderflow.refund%' OR search_text LIKE '%refund%' OR search_text LIKE '%spec%' OR search_text LIKE '%price%' OR search_text LIKE '%orderflow.refund.refundable_amount%' OR search_text LIKE '%refundable_amount%' OR search_text LIKE '%为%' OR search_text LIKE '%的%' OR search_text LIKE '%模块%' OR search_text LIKE '%块实%' OR search_text LIKE '%实现%') LIMIT 40",
       "rows": 7,
-      "duration_ms": 3.267,
+      "duration_ms": 3.98,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT symbol_id, file_path, module_path, name, kind, signature, docstring, line_start, line_end, source FROM code_symbol WHERE module_path IN ('orderflow.refund', 'orderflow.pricing', 'orderflow.service') LIMIT 80",
       "rows": 11,
-      "duration_ms": 2.7,
+      "duration_ms": 2.8,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT symbol_id, file_path, module_path, name, kind, signature, docstring, line_start, line_end, source FROM code_symbol WHERE 1 = 1 AND (search_text LIKE '%orderflow%' OR search_text LIKE '%orderflow.refund%' OR search_text LIKE '%refund%' OR search_text LIKE '%spec%' OR search_text LIKE '%price%' OR search_text LIKE '%orderflow.refund.refundable_amount%' OR search_text LIKE '%refundable_amount%' OR search_text LIKE '%为%' OR search_text LIKE '%的%' OR search_text LIKE '%模块%' OR search_text LIKE '%块实%' OR search_text LIKE '%实现%') LIMIT 80",
       "rows": 26,
-      "duration_ms": 3.68,
+      "duration_ms": 3.791,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT test_id, file_path, name, module_path, docstring, asserts, target_modules FROM test_case WHERE (target_modules LIKE '%orderflow.refund%' OR target_modules LIKE '%orderflow.pricing%' OR target_modules LIKE '%orderflow.service%') LIMIT 80",
       "rows": 16,
-      "duration_ms": 6.873,
+      "duration_ms": 6.955,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT test_id, file_path, name, module_path, docstring, asserts, target_modules FROM test_case WHERE 1 = 1 AND (search_text LIKE '%orderflow%' OR search_text LIKE '%orderflow.refund%' OR search_text LIKE '%refund%' OR search_text LIKE '%spec%' OR search_text LIKE '%price%' OR search_text LIKE '%orderflow.refund.refundable_amount%' OR search_text LIKE '%refundable_amount%' OR search_text LIKE '%为%' OR search_text LIKE '%的%' OR search_text LIKE '%模块%' OR search_text LIKE '%块实%' OR search_text LIKE '%实现%') LIMIT 80",
       "rows": 16,
-      "duration_ms": 3.324,
+      "duration_ms": 3.27,
       "ok": true,
       "error": ""
     },
     {
       "sql": "SELECT spec_id, title, status, applies_to, supersedes, tags, source_path, revision, body FROM spec_item WHERE status <> 'active'",
       "rows": 2,
-      "duration_ms": 2.05,
+      "duration_ms": 3.211,
       "ok": true,
       "error": ""
     }
