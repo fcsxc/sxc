@@ -1,0 +1,23 @@
+{
+  "scope_title": "orderflow-refund-sdd-verify-1793298534",
+  "empty_state_before": true,
+  "save_exit_code": 0,
+  "load_exit_code": 0,
+  "state": {
+    "task_id": "TASK-REFUND-014",
+    "task": "为 OrderFlow 的 orderflow.refund 模块实现 SPEC-REFUND-014",
+    "done": [
+      "已定位 orderflow/refund.py::refundable_amount 待实现"
+    ],
+    "todo": [
+      "实现 SPEC-REFUND-014 的运费可退规则",
+      "运行目标测试与回归测试"
+    ],
+    "verifications": [],
+    "context_digest": "",
+    "updated_at": "2026-10-30T02:28:55"
+  },
+  "reused_after_restart": true,
+  "state_used_in_context": true,
+  "powercontext_scope": "TASK-REFUND-014"
+}

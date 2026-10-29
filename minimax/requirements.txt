@@ -1,0 +1,11 @@
+# SDD 上下文模块运行依赖（Python 3.11+，推荐 3.12）
+#
+# 1) 嵌入式 seekdb：工程资料存储与检索
+# 2) PowerContext：任务状态保存与复用
+# 3) pytest：业务工程的测试
+#
+# MiniMax 客户端只依赖标准库，调用凭据通过环境变量 MINIMAX_API_KEY 提供。
+
+pylibseekdb==1.4.0.post2
+powercontext[cli,server]==1.4.1
+pytest>=8.0

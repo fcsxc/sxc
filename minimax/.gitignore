@@ -1,0 +1,6 @@
+# 本地运行产物（不提交）
+.data/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

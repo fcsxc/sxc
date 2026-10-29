@@ -1,0 +1,227 @@
+$ python -m pytest -q tests/test_refund_quota.py
+# 修改前代码：snapshots/before/
+# 退出码：1
+
+FFFFFFFF                                                                 [100%]
+================================== FAILURES ===================================
+__________ test_delivery_delay_refunds_shipping_fee_and_caps_at_half __________
+
+    def test_delivery_delay_refunds_shipping_fee_and_caps_at_half():
+>       quote = refundable_amount(
+            ORDER_A,
+            request_for(ORDER_A, REASON_DELIVERY_DELAY, {"SKU-1": 1}),
+        )
+
+tests\test_refund_quota.py:23: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1001', customer_id='CUST-1', items=(LineItem(sku='SKU-1', name='机械键盘', unit_price_cents=39900, qua...ce_cents=9900, quantity=2, category='accessory')), shipping_fee_cents=1200, coupon_discount_cents=5000, currency='CNY')
+request = RefundRequest(order_id='ORD-1001', reason='delivery_delay', quantities={'SKU-1': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+__________________ test_damaged_does_not_refund_shipping_fee __________________
+
+    def test_damaged_does_not_refund_shipping_fee():
+>       quote = refundable_amount(
+            ORDER_B,
+            request_for(ORDER_B, REASON_DAMAGED, {"SKU-A": 1}),
+        )
+
+tests\test_refund_quota.py:38: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='damaged', quantities={'SKU-A': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+_________ test_delivery_delay_refunds_shipping_fee_for_partial_refund _________
+
+    def test_delivery_delay_refunds_shipping_fee_for_partial_refund():
+>       quote = refundable_amount(
+            ORDER_B,
+            request_for(ORDER_B, REASON_DELIVERY_DELAY, {"SKU-A": 1}),
+        )
+
+tests\test_refund_quota.py:52: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='delivery_delay', quantities={'SKU-A': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+_________ test_quality_issue_refund_is_capped_at_half_of_paid_amount __________
+
+    def test_quality_issue_refund_is_capped_at_half_of_paid_amount():
+>       quote = refundable_amount(
+            ORDER_B,
+            request_for(ORDER_B, REASON_QUALITY_ISSUE, {"SKU-A": 2, "SKU-B": 1}),
+        )
+
+tests\test_refund_quota.py:63: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='quality_issue', quantities={'SKU-A': 2, 'SKU-B': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+_______________________ test_unknown_reason_is_rejected _______________________
+
+    def test_unknown_reason_is_rejected():
+        with pytest.raises(ValueError):
+>           refundable_amount(
+                ORDER_B,
+                request_for(ORDER_B, "not_a_reason", {"SKU-A": 1}),
+            )
+
+tests\test_refund_quota.py:75: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='not_a_reason', quantities={'SKU-A': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+________________________ test_unknown_sku_is_rejected _________________________
+
+    def test_unknown_sku_is_rejected():
+        with pytest.raises(ValueError):
+>           refundable_amount(
+                ORDER_B,
+                request_for(ORDER_B, REASON_DAMAGED, {"SKU-Z": 1}),
+            )
+
+tests\test_refund_quota.py:83: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='damaged', quantities={'SKU-Z': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+_______________ test_service_create_refund_returns_quote_fields _______________
+
+    def test_service_create_refund_returns_quote_fields():
+        service = RefundService({ORDER_B.order_id: ORDER_B})
+>       result = service.create_refund(
+            request_for(ORDER_B, REASON_DELIVERY_DELAY, {"SKU-A": 1})
+        )
+
+tests\test_refund_quota.py:91: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+orderflow\service.py:40: in create_refund
+    quote = refundable_amount(order, request)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='delivery_delay', quantities={'SKU-A': 1}, requested_cents=None)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+_____________ test_service_clamps_requested_amount_to_refundable ______________
+
+    def test_service_clamps_requested_amount_to_refundable():
+        service = RefundService({ORDER_B.order_id: ORDER_B})
+>       result = service.create_refund(
+            request_for(ORDER_B, REASON_DAMAGED, {"SKU-A": 2, "SKU-B": 1}, requested_cents=999999)
+        )
+
+tests\test_refund_quota.py:104: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+orderflow\service.py:40: in create_refund
+    quote = refundable_amount(order, request)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+order = Order(order_id='ORD-1002', customer_id='CUST-2', items=(LineItem(sku='SKU-A', name='显示器支架', unit_price_cents=5000, qua...price_cents=8000, quantity=1, category='peripheral')), shipping_fee_cents=500, coupon_discount_cents=0, currency='CNY')
+request = RefundRequest(order_id='ORD-1002', reason='damaged', quantities={'SKU-A': 2, 'SKU-B': 1}, requested_cents=999999)
+
+    def refundable_amount(order: Order, request: RefundRequest) -> RefundQuote:
+        """按 ``SPEC-REFUND-014`` 计算本次退款请求的可退金额。
+    
+        待实现：需要处理退款原因校验、商品小计与优惠券分摊、运费是否可退，
+        以及 ``SPEC-REFUND-020`` 规定的单次退款上限。
+        """
+    
+>       raise NotImplementedError("SPEC-REFUND-014 尚未实现：refundable_amount 待补齐")
+E       NotImplementedError: SPEC-REFUND-014 尚未实现：refundable_amount 待补齐
+
+orderflow\refund.py:23: NotImplementedError
+=========================== short test summary info ===========================
+FAILED tests/test_refund_quota.py::test_delivery_delay_refunds_shipping_fee_and_caps_at_half
+FAILED tests/test_refund_quota.py::test_damaged_does_not_refund_shipping_fee
+FAILED tests/test_refund_quota.py::test_delivery_delay_refunds_shipping_fee_for_partial_refund
+FAILED tests/test_refund_quota.py::test_quality_issue_refund_is_capped_at_half_of_paid_amount
+FAILED tests/test_refund_quota.py::test_unknown_reason_is_rejected - NotImple...
+FAILED tests/test_refund_quota.py::test_unknown_sku_is_rejected - NotImplemen...
+FAILED tests/test_refund_quota.py::test_service_create_refund_returns_quote_fields
+FAILED tests/test_refund_quota.py::test_service_clamps_requested_amount_to_refundable
+8 failed in 0.11s
+

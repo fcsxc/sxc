@@ -1,0 +1,14 @@
+[
+  {
+    "name": "目标测试（修改后）",
+    "command": "python -m pytest -q tests/test_refund_quota.py",
+    "exit_code": 0,
+    "at": ""
+  },
+  {
+    "name": "回归测试（修改后）",
+    "command": "python -m pytest -q tests/test_pricing.py tests/test_service.py",
+    "exit_code": 0,
+    "at": ""
+  }
+]
